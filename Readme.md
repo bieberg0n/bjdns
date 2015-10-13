@@ -1,4 +1,4 @@
-#pydnserver
+#bjdns
 
 一个简陋的DNS服务器，用于防止有关部门的DNS污染。
 
@@ -18,12 +18,12 @@ p.s. 打包版已内置以上依赖。
 ###Usage
 ####Linux/OS X:
 修改本机DNS为127.0.0.1，然后在终端输入  
-$python3 dnserver.py  
+$python3 bjdns.py  
 
 ####Windows:
-已用cxfreeze打包成exe,见dnserver.7z。  
-下载dnserver.7z,解压。  
-在网络连接的本地连接(或者无线网络)-属性-IPv4里，将首选DNS服务器改为127.0.0.1，然后启动目录中的dnserver.exe。  
+已用cxfreeze打包成exe,见bjdns.7z。  
+下载bjdns.7z,解压。  
+在网络连接的本地连接(或者无线网络)-属性-IPv4里，将首选DNS服务器改为127.0.0.1，然后启动目录中的bjdns.exe。  
 右键弹出菜单可退出。  
 
 ####P.S.
