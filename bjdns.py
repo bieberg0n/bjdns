@@ -5,10 +5,7 @@ import struct
 import subprocess
 import threading
 import configparser
-from tkinter import Tk, Menu,messagebox
 import os
-#import time
-import threading
 
 __author__ = 'bjong'
 
@@ -33,6 +30,7 @@ class SinDNSQuery:
     def getbytes(self):
         return self.querybytes + struct.pack('>HH', self.type, self.classify)
 
+
 # DNS Answer RRS
 # this class is also can be use as Authority RRS or Additional RRS 
 class SinDNSAnswer:
@@ -48,6 +46,7 @@ class SinDNSAnswer:
         s = self.ip.split('.')
         res = res + struct.pack('BBBB', int(s[0]), int(s[1]), int(s[2]), int(s[3]))
         return res
+
 
 # DNS frame
 # must initialized by a DNS query frame
@@ -67,6 +66,8 @@ class SinDNSFrame:
         if self.answers != 0:
             res = res + self.answer.getbytes()
         return res
+
+
 # A UDPHandler to handle DNS query
 class SinDNSUDPHandler(socketserver.BaseRequestHandler):
     def send(self,name,dns,socket):
@@ -75,29 +76,28 @@ class SinDNSUDPHandler(socketserver.BaseRequestHandler):
         if [ x for x in google if name.endswith(x) ]:
             ip = google_ip
             print('google ', end='')
+
         elif name in cache:
             ip = cache[name]
             print('cache ', end='')
+
         else:
             for domain in l:
                 if name.endswith(domain):
                     dnserver = 'cdnserver'
                     break
-            # while True:
-            #     try:
             out = subprocess.getoutput('dig {} @{} -p {} +short'.format(name,ds[dnserver][0],ds[dnserver][1]))
             ip = IP_PTN.findall(out)[0] if IP_PTN.findall(out) else '127.0.0.1'
             if ip:
                 cache[name] = ip
                 with open('cache.txt','a') as f:
                     f.write('{} {}\n'.format(name,ip))
-            #     break
-            # except:
-            #     continue
+
         dns.setip(ip)
         socket.sendto(dns.getbytes(), self.client_address)
         print(name,ip)
 
+        
     def handle(self):
         data = self.request[0].strip()
         dns = SinDNSFrame(data)
@@ -105,7 +105,6 @@ class SinDNSUDPHandler(socketserver.BaseRequestHandler):
         #namemap = SinDNSServer.namemap
         if(dns.query.type==1):
             # If this is query a A record, then response it
-
             name = dns.getname()
             p = threading.Thread(target=self.send,args=(name,dns,socket,))
             p.start()
@@ -124,19 +123,27 @@ class SinDNSUDPHandler(socketserver.BaseRequestHandler):
             # If this is not query a A record, ignore it
             socket.sendto(data, self.client_address)
 
+
 # DNS Server
 # It only support A record query
 # user it, U can create a simple DNS server
-class SinDNSServer:
-    def __init__(self):
-        #SinDNSServer.namemap = {}
-        pass
-    #def addname(self, name, ip):
-    #    SinDNSServer.namemap[name] = ip
-    def start(self):
-        HOST, PORT =listen['ip'],listen['port']
-        server = socketserver.UDPServer((HOST, PORT), SinDNSUDPHandler)
-        server.serve_forever()
+# class SinDNSServer:
+#     def __init__(self):
+#         #SinDNSServer.namemap = {}
+#         pass
+#     #def addname(self, name, ip):
+#     #    SinDNSServer.namemap[name] = ip
+#     def start(self):
+#         HOST, PORT =listen['ip'],listen['port']
+#         server = socketserver.UDPServer((HOST, PORT), SinDNSUDPHandler)
+#         server.serve_forever()
+
+
+def start():
+    # HOST, PORT =listen['ip'],listen['port']
+    server = socketserver.UDPServer((listen['ip'], listen['port']), SinDNSUDPHandler)
+    server.serve_forever()
+
 
 def menu_func(event, x, y):
     if event == 'WM_RBUTTONDOWN':    # Right click tray icon, pop up menu
@@ -144,14 +151,14 @@ def menu_func(event, x, y):
     #elif event == 'WM_LBUTTONDOWN' and visible == True:    # Right click tray icon, pop up menu
         #change_visible()
 
-def change_visible():
-    #messagebox.showinfo('msg', 'you clicked say hello button.')
-    global visible
-    visible = not visible
-    whnd = ctypes.windll.kernel32.GetConsoleWindow()   
-    if whnd != 0:   
-        ctypes.windll.user32.ShowWindow(whnd, int(visible))
-        ctypes.windll.kernel32.CloseHandle(whnd) 
+# def change_visible():
+#     #messagebox.showinfo('msg', 'you clicked say hello button.')
+#     global visible
+#     visible = not visible
+#     whnd = ctypes.windll.kernel32.GetConsoleWindow()   
+#     if whnd != 0:   
+#         ctypes.windll.user32.ShowWindow(whnd, int(visible))
+#         ctypes.windll.kernel32.CloseHandle(whnd) 
     #win32gui.ShowWindow(hd,int(visible))
 
     
@@ -159,6 +166,8 @@ def quit():
     root.quit()
     root.destroy()
     sys.exit()
+
+    
 # Now, test it
 if __name__ == "__main__":
 
@@ -187,14 +196,14 @@ if __name__ == "__main__":
     google = open('google.txt','r').read().split('\n')
     google.pop()
     google_ip = cf.get('fuckgfw','google_ip')
-    # print(google[-1],google_ip)
-    sev = SinDNSServer()
+    # sev = SinDNSServer()
     #sev.addname('www.aa.com', '192.168.0.1')    # add a A record
     #sev.addname('www.bb.com', '192.168.0.2')    # add a A record
     #sev.addname('*', '0.0.0.0') # default address
     if os.name == 'nt':
         #import ctypes
         import sys
+        from tkinter import Tk, Menu#,messagebox
         #import win32api, win32gui
         #visible = bool(int(cf.get('listen','visible')))
         #whnd = ctypes.windll.kernel32.GetConsoleWindow()   
@@ -223,9 +232,11 @@ if __name__ == "__main__":
         t.start()
         root.mainloop()
     else:
-        sev.start()
-
-        #sev.start() # start DNS server
+        # sev.start() # start DNS server
+        # HOST, PORT = listen['ip'],listen['port']
+        # server = socketserver.UDPServer((HOST, PORT), SinDNSUDPHandler)
+        # server.serve_forever()
+        start()
 
         # Now, U can use "nslookup" command to test it
         # Such as "nslookup www.aa.com"
