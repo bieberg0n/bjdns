@@ -193,11 +193,11 @@ if __name__ == "__main__":
     
     cache = open('cache.txt','r').read().split('\n')
     cache.pop()
-    cache = { x.split()[0]:x.split()[1] for x in cache }
+    cache = { x.split()[0]:x.split()[1] for x in cache if x.split()[1] != '127.0.0.1' }
     with open('cache.txt','w') as f:
         for i in cache:
-            if cache[i] != '127.0.0.1':
-                f.write('{} {}\n'.format(i,cache[i]))
+            # if cache[i] != '127.0.0.1':
+            f.write('{} {}\n'.format(i,cache[i]))
 
     google = open('google.txt','r').read().split('\n')
     google.pop()
