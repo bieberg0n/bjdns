@@ -41,23 +41,10 @@ def make_data(data, ip):
 
 
 def eva(data, client, server):
-	# server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	# server.bind(('127.0.0.1',5333))
-	# data,client = server.recvfrom(512,)
-	# print(client)
-	# print(data)
-	# server.sendto(data,('127.0.0.1',53))
-	# print(server.recvfrom(512,)[0])
-	# exit()
-	
-	# print(client)
-
 	list_iter = iter(data[13:])
-	# list_iter = iter(data)
 	name = ''
 	for bit in iter(lambda: next(list_iter), 0):
 		name += '.' if bit < 32 else chr(bit)
-	# print(name)
 	
 	type = unpack('>H',data[14+len(name):16+len(name)])
 	type = type[0]
@@ -71,9 +58,6 @@ def eva(data, client, server):
 
 	elif [ 1 for i in cdn_list if name.endswith(i) or i.endswith(name) ]:
 		print('cdn', name)
-		# s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-		# s.sendto(data, (dns['server'],dns['port']))
-		# data = s.recv(512)
 		server.sendto(get_data(data), client)
 
 	elif name in cache:
@@ -83,12 +67,10 @@ def eva(data, client, server):
 
 	else:
 		data = pack('>H', len(data)) + data
-		# print(data)
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.connect(('208.67.220.220', 53))
 		s.send(data)
 		data = s.recv(512)
-		# print(data)
 		server.sendto(data[2:], client)
 		
 		ip = unpack('BBBB',data[32+len(name):36+len(name)])
@@ -97,15 +79,7 @@ def eva(data, client, server):
 		cache[name] = ip
 		with open('cache.txt','a') as f:
 			f.write('{} {}\n'.format(name,ip))
-	exit()
-			
-
-
-	# client1 = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	# client1.sendto(data,('119.29.29.29',53))
-	# data1,c1 = client1.recvfrom(512,)
-	# server.sendto(data1, client)
-	# server.sendto(res, client)
+	# exit()
 
 
 def adem():
@@ -117,7 +91,6 @@ def adem():
 		t.start()
 
 	
-# bjdns()
 if __name__ == "__main__":
 
 	cf = configparser.ConfigParser()
