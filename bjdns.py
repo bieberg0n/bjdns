@@ -11,6 +11,15 @@ def get_data(data):
 	return data
 
 
+def get_data_by_tcp(data):
+	data = pack('>H', len(data)) + data
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.connect(('208.67.220.220', 53))
+	s.send(data)
+	res = s.recv(512)
+	return res[2:]
+
+
 def make_data(data, ip):
 	(id, flags, quests,
 	 answers, author, addition) = unpack('>HHHHHH', data[0:12])
@@ -40,6 +49,13 @@ def make_data(data, ip):
 	return res
 
 
+def get_ip(res, data_len):
+	index_0101 = res[data_len:].index(b'\x00\x01\x00\x01')
+	ip_bytes = unpack('BBBB',res[data_len:][index_0101+10:index_0101+14])
+	ip =  '.'.join( [ str(i) for i in ip_bytes ] )
+	return ip
+
+
 def eva(data, client, server):
 	list_iter = iter(data[13:])
 	name = ''
@@ -66,15 +82,12 @@ def eva(data, client, server):
 		server.sendto(make_data(data, ip), client)
 
 	else:
-		data = pack('>H', len(data)) + data
-		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		s.connect(('208.67.220.220', 53))
-		s.send(data)
-		data = s.recv(512)
-		server.sendto(data[2:], client)
+		res = get_data_by_tcp(data)
+		server.sendto(res, client)
 		
-		ip = unpack('BBBB',data[32+len(name):36+len(name)])
-		ip = '.'.join( [ str(i) for i in ip ] )
+		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
+		# ip = '.'.join( [ str(i) for i in ip ] )
+		ip = get_ip(res, len(data))
 		print(name, ip)
 		cache[name] = ip
 		with open('cache.txt','a') as f:
@@ -86,7 +99,10 @@ def adem():
 	server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 	server.bind(('127.0.0.1',53))
 	while 1:
-		data, client = server.recvfrom(512,)
+		try:
+			data, client = server.recvfrom(512,)
+		except ConnectionResetError:
+			continue
 		t = threading.Thread(target=eva,args=(data, client, server ))
 		t.start()
 
@@ -121,12 +137,19 @@ if __name__ == "__main__":
 	google.pop()
 
 	if os.name == 'nt':
-		# import sys
+		import sys
 		from tkinter import Tk, Menu#,messagebox
+
 		def menu_func(event, x, y):
 			if event == 'WM_RBUTTONDOWN':	# Right click tray icon, pop up menu
 				menu.tk_popup(x, y)
 
+
+		def quit():
+			root.quit()
+			root.destroy()
+			sys.exit()
+				
 				
 		print(dns)
 		root = Tk()
