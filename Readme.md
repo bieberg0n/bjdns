@@ -3,15 +3,19 @@
 一个简陋的带缓存的DNS服务器，用于防止有关部门的DNS污染。
 
 ###Version
-0.3
+[v0.4]
+重构;
+不缓存cdnlist里的域名;
+使用tcp发dns请求。
+
+[v0.3]
 
 ###Support
 Windows/Linux/OS X
 
 ###Depends
 Python(>=3)  
-python-tkinter  
-dig  
+python-tkinter    
 [Winico](https://github.com/lijiejie/python-flash-trayicons/tree/master/winico0.6)(仅Windows依赖)  
 p.s. 打包版已内置以上依赖。
 
@@ -27,7 +31,7 @@ $sudo python3 bjdns.py
 右键弹出菜单可退出。  
 
 ####P.S.
-可将8.8.4.4修改为别的更快的DNS服务器。移动连8.8.4.4比较快，电信不快。
+可将8.8.8.8修改为别的更快的DNS服务器。移动连8.8.8.8比较快，电信不快。
 若要手动清除缓存，清空cache.txt里面的内容并重开bjdns即可。
 
 ###Reference
