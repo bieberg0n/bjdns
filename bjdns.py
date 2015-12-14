@@ -1,235 +1,161 @@
-#!/usr/bin/python3
-import socketserver
-import re
-import struct
-import subprocess
-import threading
+import socket
+from struct import pack, unpack
 import configparser
 import os
+import threading
 
-__author__ = 'bjong'
-
-# DNS Query
-class SinDNSQuery:
-	def __init__(self, data):
-		i = 1
-		self.name = ''
-		while True:
-			#d = ord(data[i])
-			d = data[i]
-			if d == 0:
-				break;
-			if d < 32:
-				self.name = self.name + '.'
-			else:
-				self.name = self.name + chr(d)
-			i = i + 1
-		self.querybytes = data[0:i + 1]
-		(self.type, self.classify) = struct.unpack('>HH', data[i + 1:i + 5])
-		self.len = i + 5
-	def getbytes(self):
-		return self.querybytes + struct.pack('>HH', self.type, self.classify)
+def get_data(data):
+	s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	s.sendto(data, (dns['server'],dns['port']))
+	data = s.recv(512)
+	return data
 
 
-# DNS Answer RRS
-# this class is also can be use as Authority RRS or Additional RRS 
-class SinDNSAnswer:
-	def __init__(self, ip):
-		self.name = 49164
-		self.type = 1
-		self.classify = 1
-		self.timetolive = 190
-		self.datalength = 4
-		self.ip = ip
-	def getbytes(self):
-		res = struct.pack('>HHHLH', self.name, self.type, self.classify, self.timetolive, self.datalength)
-		s = self.ip.split('.')
-		res = res + struct.pack('BBBB', int(s[0]), int(s[1]), int(s[2]), int(s[3]))
-		return res
+def make_data(data, ip):
+	(id, flags, quests,
+	 answers, author, addition) = unpack('>HHHHHH', data[0:12])
+	flags_new = 33152
+	answers_new = 1
+	res = pack('>HHHHHH', id, flags_new, quests,
+			   answers_new, author, addition)
+	
+	res += data[12:]
+	
+	dns_answer = {
+		'name':49164,
+		'type':1,
+		'classify':1,
+		'ttl':190,
+		'datalength':4
+		}
+	res += pack('>HHHLH', dns_answer['name'], dns_answer['type'],
+					  dns_answer['classify'], dns_answer['ttl'],
+					  dns_answer['datalength'])
+	
+	ip = ip.split('.')
+	ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
+					int(ip[2]), int(ip[3]))
+	res += ip_bytes
+	
+	return res
 
 
-# DNS frame
-# must initialized by a DNS query frame
-class SinDNSFrame:
-	def __init__(self, data):
-		(self.id, self.flags, self.quests, self.answers, self.author, self.addition) = struct.unpack('>HHHHHH', data[0:12])
-		self.query = SinDNSQuery(data[12:])
-	def getname(self):
-		return self.query.name
-	def setip(self, ip):
-		self.answer = SinDNSAnswer(ip)
-		self.answers = 1
-		self.flags = 33152
-	def getbytes(self):
-		res = struct.pack('>HHHHHH', self.id, self.flags, self.quests, self.answers, self.author, self.addition)
-		res = res + self.query.getbytes()
-		if self.answers != 0:
-			res = res + self.answer.getbytes()
-		return res
+def eva(data, client, server):
+	# server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	# server.bind(('127.0.0.1',5333))
+	# data,client = server.recvfrom(512,)
+	# print(client)
+	# print(data)
+	# server.sendto(data,('127.0.0.1',53))
+	# print(server.recvfrom(512,)[0])
+	# exit()
+	
+	# print(client)
 
-
-# A UDPHandler to handle DNS query
-class SinDNSUDPHandler(socketserver.BaseRequestHandler):
-	def send(self,name,dns,socket):
-		IP_PTN = re.compile('\d+\.\d+\.\d+\.\d+')
-		dnserver = 'fuckgfw'
-		if [ x for x in google if name.endswith(x) ]:
-			ip = google_ip
-			print('google ', end='')
-
-		elif name in cache:
-			ip = cache[name]
-			print('cache ', end='')
-
-		else:
-			for domain in l:
-				if name.endswith(domain):
-					dnserver = 'cdnserver'
-					break
-
-			if dnserver == 'cdnserver':
-				out = subprocess.getoutput('dig {} @{} -p {} +short'.format(name,ds[dnserver][0],ds[dnserver][1]))
-			else:
-				out = subprocess.getoutput('dig {name} @{server} +tcp +short'.format(name=name,server=ds[dnserver][0],port=ds[dnserver][1]))
-			ip = IP_PTN.findall(out)[0] if IP_PTN.findall(out) else '127.0.0.1'
-			if ip and ip != '127.0.0.1' and dnserver == 'fuckgfw':
-				cache[name] = ip
-				with open('cache.txt','a') as f:
-					f.write('{} {}\n'.format(name,ip))
-
-		dns.setip(ip)
-		socket.sendto(dns.getbytes(), self.client_address)
-		print(name,ip)
-
+	list_iter = iter(data[13:])
+	# list_iter = iter(data)
+	name = ''
+	for bit in iter(lambda: next(list_iter), 0):
+		name += '.' if bit < 32 else chr(bit)
+	# print(name)
+	
+	type = unpack('>H',data[14+len(name):16+len(name)])
+	type = type[0]
+	if not type:
+		server.sendto(get_data(data), client)
 		
-	def handle(self):
-		data = self.request[0].strip()
-		dns = SinDNSFrame(data)
-		socket = self.request[1]
-		#namemap = SinDNSServer.namemap
-		if(dns.query.type==1):
-			# If this is query a A record, then response it
-			name = dns.getname()
-			p = threading.Thread(target=self.send,args=(name,dns,socket,))
-			p.start()
-			#if namemap.__contains__(name):
-			#	# If have record, response it
-			#	dns.setip(namemap[name])
-			#	socket.sendto(dns.getbytes(), self.client_address)
-			#elif namemap.__contains__('*'):
-			#	# Response default address
-			#	dns.setip(namemap['*'])
-			#	socket.sendto(dns.getbytes(), self.client_address)
-			#else:
-			#	# ignore it
-			#	socket.sendto(data, self.client_address)
-		else:
-			# If this is not query a A record, ignore it
-			socket.sendto(data, self.client_address)
+	if [ 1 for x in google if name.endswith(x) or x.endswith(name) ]:
+		ip = google_ip
+		print('google', name, ip)
+		server.sendto(make_data(data, ip), client)
+
+	elif [ 1 for i in cdn_list if name.endswith(i) or i.endswith(name) ]:
+		print('cdn', name)
+		# s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+		# s.sendto(data, (dns['server'],dns['port']))
+		# data = s.recv(512)
+		server.sendto(get_data(data), client)
+
+	elif name in cache:
+		ip = cache[name]
+		print('cache', name, ip)
+		server.sendto(make_data(data, ip), client)
+
+	else:
+		data = pack('>H', len(data)) + data
+		# print(data)
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		s.connect(('208.67.220.220', 53))
+		s.send(data)
+		data = s.recv(512)
+		# print(data)
+		server.sendto(data[2:], client)
+		
+		ip = unpack('BBBB',data[32+len(name):36+len(name)])
+		ip = '.'.join( [ str(i) for i in ip ] )
+		print(name, ip)
+		cache[name] = ip
+		with open('cache.txt','a') as f:
+			f.write('{} {}\n'.format(name,ip))
+	exit()
+			
 
 
-# DNS Server
-# It only support A record query
-# user it, U can create a simple DNS server
-# class SinDNSServer:
-#	 def __init__(self):
-#		 #SinDNSServer.namemap = {}
-#		 pass
-#	 #def addname(self, name, ip):
-#	 #	SinDNSServer.namemap[name] = ip
-#	 def start(self):
-#		 HOST, PORT =listen['ip'],listen['port']
-#		 server = socketserver.UDPServer((HOST, PORT), SinDNSUDPHandler)
-#		 server.serve_forever()
+	# client1 = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	# client1.sendto(data,('119.29.29.29',53))
+	# data1,c1 = client1.recvfrom(512,)
+	# server.sendto(data1, client)
+	# server.sendto(res, client)
 
 
-def start():
-	# HOST, PORT =listen['ip'],listen['port']
-	server = socketserver.UDPServer((listen['ip'], listen['port']), SinDNSUDPHandler)
-	server.serve_forever()
-
-
-def menu_func(event, x, y):
-	if event == 'WM_RBUTTONDOWN':	# Right click tray icon, pop up menu
-		menu.tk_popup(x, y)
-	#elif event == 'WM_LBUTTONDOWN' and visible == True:	# Right click tray icon, pop up menu
-		#change_visible()
-
-# def change_visible():
-#	 #messagebox.showinfo('msg', 'you clicked say hello button.')
-#	 global visible
-#	 visible = not visible
-#	 whnd = ctypes.windll.kernel32.GetConsoleWindow()   
-#	 if whnd != 0:   
-#		 ctypes.windll.user32.ShowWindow(whnd, int(visible))
-#		 ctypes.windll.kernel32.CloseHandle(whnd) 
-	#win32gui.ShowWindow(hd,int(visible))
+def adem():
+	server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	server.bind(('127.0.0.1',53))
+	while 1:
+		data, client = server.recvfrom(512,)
+		t = threading.Thread(target=eva,args=(data, client, server ))
+		t.start()
 
 	
-def quit():
-	root.quit()
-	root.destroy()
-	sys.exit()
-
-	
-# Now, test it
+# bjdns()
 if __name__ == "__main__":
 
-	dnserver = 'fuckgfw'
-			
 	cf = configparser.ConfigParser()
-	cf.read('dnserver.conf')
+	cf.read('bjdns.conf')
 	listen = {
 			'ip':cf.get('listen','ip'),
 			'port':int(cf.get('listen','port'))
 			}
-	ds = {
-		'fuckgfw':[
-				cf.get('fuckgfw','server'),
-				cf.get('fuckgfw','port')
-				],
-		'cdnserver':[
-				cf.get('cdnserver','server'),
-				cf.get('cdnserver','port')
-				]
+	dns = {
+		'server':cf.get('dns','server'),
+		'port':int(cf.get('dns','port'))
 		}
-
-	l = open('cdnlist.txt','r').read().split('\n')
-	l.pop()
+	google_ip = cf.get('fuckgfw','google_ip')
+	
+	cdn_list = open('cdnlist.txt','r').read().split('\n')
+	cdn_list.pop()
 
 	if not os.path.isfile('cache.txt'):
-		# os.mknod('cache.txt',mode=0o666)
 		open('cache.txt','w')
 	cache = open('cache.txt','r').read().split('\n')
 	cache.pop()
-	cache = { x.split()[0]:x.split()[1] for x in cache if x.split()[1] != '127.0.0.1' }
+	cache = { x.split()[0]:x.split()[1] for x in cache }
 	with open('cache.txt','w') as f:
 		for i in cache:
-			# if cache[i] != '127.0.0.1':
 			f.write('{} {}\n'.format(i,cache[i]))
 
 	google = open('google.txt','r').read().split('\n')
 	google.pop()
-	google_ip = cf.get('fuckgfw','google_ip')
-	# sev = SinDNSServer()
-	#sev.addname('www.aa.com', '192.168.0.1')	# add a A record
-	#sev.addname('www.bb.com', '192.168.0.2')	# add a A record
-	#sev.addname('*', '0.0.0.0') # default address
+
 	if os.name == 'nt':
-		#import ctypes
-		import sys
+		# import sys
 		from tkinter import Tk, Menu#,messagebox
-		#import win32api, win32gui
-		#visible = bool(int(cf.get('listen','visible')))
-		#whnd = ctypes.windll.kernel32.GetConsoleWindow()   
-		#if whnd != 0:   
-		#if not visible:
-			#ctypes.windll.user32.ShowWindow(whnd, int(visible))
-			#ctypes.windll.kernel32.CloseHandle(whnd) 
-		#ct = win32api.GetConsoleTitle()   
-		#hd = win32gui.FindWindow(0,ct)   
-		#win32gui.ShowWindow(hd,int(visible))
-		print(ds)
+		def menu_func(event, x, y):
+			if event == 'WM_RBUTTONDOWN':	# Right click tray icon, pop up menu
+				menu.tk_popup(x, y)
+
+				
+		print(dns)
 		root = Tk()
 		root.tk.call('package', 'require', 'Winico')
 		icon = root.tk.call('winico', 'createfrom', os.path.join(os.getcwd(), 'py.ico'))	# New icon resources
@@ -238,21 +164,13 @@ if __name__ == "__main__":
 					 '-pos',0,
 					 '-text','dnserver')
 		menu = Menu(root, tearoff=0)
-		#menu.add_command(label='显示/隐藏', command=change_visible)
 		menu.add_command(label='退出', command=quit)
 
 		root.withdraw()
-		t = threading.Thread(target=start)
+		t = threading.Thread(target=adem)
 		t.setDaemon(True)
 		t.start()
 		root.mainloop()
+		
 	else:
-		# sev.start() # start DNS server
-		# HOST, PORT = listen['ip'],listen['port']
-		# server = socketserver.UDPServer((HOST, PORT), SinDNSUDPHandler)
-		# server.serve_forever()
-		start()
-
-		# Now, U can use "nslookup" command to test it
-		# Such as "nslookup www.aa.com"
-
+		adem()
