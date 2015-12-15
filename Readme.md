@@ -26,7 +26,7 @@ $sudo python3 bjdns.py
 
 ####Windows:
 已用cxfreeze打包成exe,见bjdns.7z。  
-下载bjdns.7z,解压。  
+下载[本项目](https://github.com/bieberg0n/bjdns/archive/master.zip),解压里面的bjdns.7z。  
 在网络连接的本地连接(或者无线网络)-属性-IPv4里，将首选DNS服务器改为127.0.0.1，然后启动目录中的bjdns.exe。  
 任务栏图标右键弹出菜单可退出。  
 
