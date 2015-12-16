@@ -97,7 +97,7 @@ def eva(data, client, server):
 
 def adem():
 	server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	server.bind(('127.0.0.1',53))
+	server.bind((listen['ip'],listen['port']))
 	while 1:
 		try:
 			data, client = server.recvfrom(512,)
