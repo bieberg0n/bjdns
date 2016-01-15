@@ -6,7 +6,8 @@ import threading
 
 def get_data(data):
 	s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	s.sendto(data, (dns['server'],dns['port']))
+	# s.sendto(data, (dns['server'],dns['port']))
+	s.sendto(data, ('160.16.101.80', 5353))
 	data = s.recv(512)
 	return data
 
@@ -82,7 +83,8 @@ def eva(data, client, server):
 		server.sendto(make_data(data, ip), client)
 
 	else:
-		res = get_data_by_tcp(data)
+		# res = get_data_by_tcp(data)
+		res = get_data(data)
 		server.sendto(res, client)
 		
 		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
