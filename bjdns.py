@@ -4,10 +4,12 @@ import configparser
 import os
 import threading
 
-def get_data(data):
+def get_data(data,cdn=0):
 	s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	# s.sendto(data, (dns['server'],dns['port']))
-	s.sendto(data, ('160.16.101.80', 5353))
+	if cdn:
+		s.sendto(data, (dns['server'],dns['port']))
+	else:
+		s.sendto(data, ('160.16.101.80', 5353))
 	data = s.recv(512)
 	return data
 
@@ -75,7 +77,7 @@ def eva(data, client, server):
 
 	elif [ 1 for i in cdn_list if name.endswith(i) or i.endswith(name) ]:
 		print('cdn', name)
-		server.sendto(get_data(data), client)
+		server.sendto(get_data(data,cdn=1), client)
 
 	elif name in cache:
 		ip = cache[name]
@@ -160,7 +162,7 @@ if __name__ == "__main__":
 		root.tk.call('winico', 'taskbar', 'add', icon,
 					 '-callback', (root.register(menu_func), '%m', '%x', '%y'),
 					 '-pos',0,
-					 '-text','dnserver')
+					 '-text','bjdns')
 		menu = Menu(root, tearoff=0)
 		menu.add_command(label='退出', command=quit)
 
