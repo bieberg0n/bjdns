@@ -70,12 +70,12 @@ def eva(data, client, server):
 	if not type:
 		server.sendto(get_data(data), client)
 		
-	if [ 1 for x in google if name.endswith(x) or x.endswith(name) ]:
+	if [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
 		ip = google_ip
 		print('google', name, ip)
 		server.sendto(make_data(data, ip), client)
 
-	elif [ 1 for i in cdn_list if name.endswith(i) or i.endswith(name) ]:
+	elif [ 1 for i in cdn_list if name.endswith(i) or name == i[1:] ]:
 		print('cdn', name)
 		server.sendto(get_data(data,cdn=1), client)
 
