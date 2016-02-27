@@ -9,7 +9,7 @@ def get_data(data,cdn=0):
 	if cdn:
 		s.sendto(data, (dns['server'],dns['port']))
 	else:
-		s.sendto(data, ('160.16.101.80', 5353))
+		s.sendto(data, ('208.67.220.220', 5353))
 	data = s.recv(512)
 	return data
 
@@ -75,18 +75,21 @@ def eva(data, client, server):
 		print('google', name, ip)
 		server.sendto(make_data(data, ip), client)
 
-	elif [ 1 for i in cdn_list if name.endswith(i) or name == i[1:] ]:
-		print('cdn', name)
-		server.sendto(get_data(data,cdn=1), client)
-
 	elif name in cache:
 		ip = cache[name]
 		print('cache', name, ip)
 		server.sendto(make_data(data, ip), client)
 
 	else:
+		if [ 1 for i in cdn_list if name.endswith(i) or name == i[1:] ]:
+			print('cdn', name)
+			# server.sendto(get_data(data,cdn=1), client)
+			res = get_data(data,cdn=1)
+
 		# res = get_data_by_tcp(data)
-		res = get_data(data)
+		else:
+			res = get_data(data)
+			
 		server.sendto(res, client)
 		
 		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
@@ -94,8 +97,8 @@ def eva(data, client, server):
 		ip = get_ip(res, len(data))
 		print(name, ip)
 		cache[name] = ip
-		with open('cache.txt','a') as f:
-			f.write('{} {}\n'.format(name,ip))
+		# with open('cache.txt','a') as f:
+		# 	f.write('{} {}\n'.format(name,ip))
 	# exit()
 
 
@@ -128,14 +131,15 @@ if __name__ == "__main__":
 	cdn_list = open('cdnlist.txt','r').read().split('\n')
 	cdn_list.pop()
 
-	if not os.path.isfile('cache.txt'):
-		open('cache.txt','w')
-	cache = open('cache.txt','r').read().split('\n')
-	cache.pop()
-	cache = { x.split()[0]:x.split()[1] for x in cache }
-	with open('cache.txt','w') as f:
-		for i in cache:
-			f.write('{} {}\n'.format(i,cache[i]))
+	# if not os.path.isfile('cache.txt'):
+	# 	open('cache.txt','w')
+	# cache = open('cache.txt','r').read().split('\n')
+	# cache.pop()
+	# cache = { x.split()[0]:x.split()[1] for x in cache }
+	# with open('cache.txt','w') as f:
+	# 	for i in cache:
+	# 		f.write('{} {}\n'.format(i,cache[i]))
+	cache = {}
 
 	google = open('google.txt','r').read().split('\n')
 	google.pop()

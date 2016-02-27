@@ -55,3 +55,12 @@ docs/_build/
 
 # PyBuilder
 target/
+
+
+bjdns_sakura2.py
+bjdns_sakura.py
+dnsbytes.txt
+bjdns_v2.py
+dnserver.py
+bjdns_sakura1.py
+cache.txt
