@@ -3,6 +3,7 @@ from struct import pack, unpack
 import configparser
 import os
 import threading
+import requests
 
 def get_data(data,cdn=0):
 	s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -23,7 +24,15 @@ def get_data_by_tcp(data):
 	return res[2:]
 
 
+s = requests.session()
+def get_ip_by_openshift(name):
+	# ip = s.post('https://mc-bieber.rhcloud.com',data={'n':name}).text
+	ip = s.post('http://rss.bjgong.tk',data={'n':name}).text
+	return ip
+
+	
 def make_data(data, ip):
+	#data即请求包
 	(id, flags, quests,
 	 answers, author, addition) = unpack('>HHHHHH', data[0:12])
 	flags_new = 33152
@@ -85,16 +94,18 @@ def eva(data, client, server):
 			print('cdn', name)
 			# server.sendto(get_data(data,cdn=1), client)
 			res = get_data(data,cdn=1)
+			server.sendto(res, client)
+			ip = get_ip(res, len(data))
 
 		# res = get_data_by_tcp(data)
 		else:
-			res = get_data(data)
-			
-		server.sendto(res, client)
-		
+			# res = get_data(data)
+			ip = get_ip_by_openshift(name)
+			server.sendto(make_data(data,ip), client)
+
 		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
 		# ip = '.'.join( [ str(i) for i in ip ] )
-		ip = get_ip(res, len(data))
+		# ip = get_ip(res, len(data))
 		print(name, ip)
 		cache[name] = ip
 		# with open('cache.txt','a') as f:

@@ -3,8 +3,11 @@
 一个简陋的带缓存的DNS服务器，用于防止有关部门的DNS污染。
 
 ###Version
-[v160227]
-砍掉永久缓存到文件的功能
+[v160305]  
+开始使用特殊的dns渠道!
+
+[v160227]  
+砍掉永久缓存到文件的功能  
 
 [v0.4]  
 重构;  
@@ -28,14 +31,12 @@ p.s. 打包版已内置以上依赖。
 $sudo python3 bjdns.py  
 
 ####Windows:
-已用cxfreeze打包成exe,见bjdns.7z。  
-下载[本项目](https://github.com/bieberg0n/bjdns/archive/master.zip),解压里面的bjdns.7z。  
+下载打包版[点我](https://github.com/bieberg0n/bjdns/releases)  
 在网络连接的本地连接(或者无线网络)-属性-IPv4里，将首选DNS服务器改为127.0.0.1，然后启动目录中的bjdns.exe。  
 任务栏图标右键弹出菜单可退出。  
 
 ####P.S.
-可在bjdns.conf中将8.8.8.8修改为别的更快的DNS服务器。移动连8.8.8.8比较快，电信不快。
-若要手动清除缓存，清空cache.txt里面的内容并重开bjdns即可。
+None.
 
 ###Reference
 [Python 实现DNS服务器(Pyhon域名解析服务器)](http://blog.csdn.net/trbbadboy/article/details/8093256)  
@@ -45,4 +46,4 @@ $sudo python3 bjdns.py
 bjong
 
 ###License (MIT)
-Copyright (c) 2015 bjong
+Copyright (c) 2015-2016 bjong
