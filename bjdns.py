@@ -89,19 +89,22 @@ def eva(data, client, server):
 		print('cache', name, ip)
 		server.sendto(make_data(data, ip), client)
 
-	else:
-		if [ 1 for i in cdn_list if name.endswith(i) or name == i[1:] ]:
-			print('cdn', name)
-			# server.sendto(get_data(data,cdn=1), client)
-			res = get_data(data,cdn=1)
-			server.sendto(res, client)
+	elif [ 1 for i in cdn_list if name.endswith(i) or name == i[1:] ]:
+		print('cdn', name)
+		# server.sendto(get_data(data,cdn=1), client)
+		res = get_data(data,cdn=1)
+		server.sendto(res, client)
+		if name == 'rss.bjgong.tk':
 			ip = get_ip(res, len(data))
+			cache[name] = ip
+		
+	else:
 
 		# res = get_data_by_tcp(data)
-		else:
+		# else:
 			# res = get_data(data)
-			ip = get_ip_by_openshift(name)
-			server.sendto(make_data(data,ip), client)
+		ip = get_ip_by_openshift(name)
+		server.sendto(make_data(data,ip), client)
 
 		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
 		# ip = '.'.join( [ str(i) for i in ip ] )
