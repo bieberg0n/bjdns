@@ -18,7 +18,9 @@ def get_data(data,cdn=0):
 def get_data_by_tcp(data):
 	data = pack('>H', len(data)) + data
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.connect(('208.67.220.220', 53))
+	s.connect(('160.16.101.80', 5333))
+	# s.connect(('210.21.196.6', 53))
+	# s.connect(('119.29.29.29', 53))
 	s.send(data)
 	res = s.recv(512)
 	return res[2:]
@@ -93,22 +95,22 @@ def eva(data, client, server):
 		print('cdn', name)
 		# server.sendto(get_data(data,cdn=1), client)
 		res = get_data(data,cdn=1)
+		# res = get_data_by_tcp(data)
 		server.sendto(res, client)
-		if name == 'rss.bjgong.tk':
+		# if name == 'rss.bjgong.tk':
+		if 'bjgong.tk' in name:
 			ip = get_ip(res, len(data))
 			cache[name] = ip
 		
 	else:
-
-		# res = get_data_by_tcp(data)
-		# else:
-			# res = get_data(data)
-		ip = get_ip_by_openshift(name)
-		server.sendto(make_data(data,ip), client)
-
+		# ip = get_ip_by_openshift(name)
+		# server.sendto(make_data(data,ip), client)
+		
+		resp = get_data_by_tcp(data)
+		server.sendto(resp, client)
 		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
 		# ip = '.'.join( [ str(i) for i in ip ] )
-		# ip = get_ip(res, len(data))
+		ip = get_ip(resp, len(data))
 		print(name, ip)
 		cache[name] = ip
 		# with open('cache.txt','a') as f:
