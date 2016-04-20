@@ -6,23 +6,19 @@ import threading
 import requests
 
 def get_data(data,cdn=0):
-	s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	if cdn:
-		s.sendto(data, (dns['server'],dns['port']))
-	else:
-		s.sendto(data, ('208.67.220.220', 5353))
+	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	s.sendto(data, ('119.29.29.29', 53))
 	data = s.recv(512)
 	return data
 
 
 def get_data_by_tcp(data):
 	data = pack('>H', len(data)) + data
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.settimeout(2)
 	s.connect(('160.16.101.80', 5333))
-	# s.connect(('210.21.196.6', 53))
-	# s.connect(('119.29.29.29', 53))
 	s.send(data)
-	res = s.recv(512)
+	res  = s.recv(512)
 	return res[2:]
 
 
@@ -37,42 +33,42 @@ def make_data(data, ip):
 	#data即请求包
 	(id, flags, quests,
 	 answers, author, addition) = unpack('>HHHHHH', data[0:12])
-	flags_new = 33152
+	flags_new   = 33152
 	answers_new = 1
-	res = pack('>HHHHHH', id, flags_new, quests,
-			   answers_new, author, addition)
+	res         = pack('>HHHHHH', id, flags_new, quests,
+					   answers_new, author, addition)
 	
-	res += data[12:]
+	res        += data[12:]
 	
-	dns_answer = {
+	dns_answer  = {
 		'name':49164,
 		'type':1,
 		'classify':1,
 		'ttl':190,
 		'datalength':4
 		}
-	res += pack('>HHHLH', dns_answer['name'], dns_answer['type'],
+	res        += pack('>HHHLH', dns_answer['name'], dns_answer['type'],
 					  dns_answer['classify'], dns_answer['ttl'],
 					  dns_answer['datalength'])
 	
-	ip = ip.split('.')
-	ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
+	ip          = ip.split('.')
+	ip_bytes    = pack('BBBB', int(ip[0]), int(ip[1]),
 					int(ip[2]), int(ip[3]))
-	res += ip_bytes
+	res        += ip_bytes
 	
 	return res
 
 
 def get_ip(res, data_len):
 	index_0101 = res[data_len:].index(b'\x00\x01\x00\x01')
-	ip_bytes = unpack('BBBB',res[data_len:][index_0101+10:index_0101+14])
-	ip =  '.'.join( [ str(i) for i in ip_bytes ] )
+	ip_bytes   = unpack('BBBB',res[data_len:][index_0101+10:index_0101+14])
+	ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
 	return ip
 
 
 def eva(data, client, server):
 	list_iter = iter(data[13:])
-	name = ''
+	name      = ''
 	for bit in iter(lambda: next(list_iter), 0):
 		name += '.' if bit < 32 else chr(bit)
 	
@@ -93,34 +89,32 @@ def eva(data, client, server):
 
 	elif [ 1 for i in cdn_list if name.endswith(i) or name == i[1:] ]:
 		print('cdn', name)
-		# server.sendto(get_data(data,cdn=1), client)
 		res = get_data(data,cdn=1)
 		# res = get_data_by_tcp(data)
 		server.sendto(res, client)
-		# if name == 'rss.bjgong.tk':
 		if 'bjgong.tk' in name:
 			ip = get_ip(res, len(data))
 			cache[name] = ip
 		
 	else:
-		# ip = get_ip_by_openshift(name)
-		# server.sendto(make_data(data,ip), client)
-		
-		resp = get_data_by_tcp(data)
-		server.sendto(resp, client)
+		try:
+			resp = get_data_by_tcp(data)
+			server.sendto(resp, client)
+			ip = get_ip(resp, len(data))
+		except socket.timeout:
+			ip = get_ip_by_openshift(name)
+			server.sendto(make_data(data,ip), client)
+			
 		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
 		# ip = '.'.join( [ str(i) for i in ip ] )
-		ip = get_ip(resp, len(data))
 		print(name, ip)
 		cache[name] = ip
-		# with open('cache.txt','a') as f:
-		# 	f.write('{} {}\n'.format(name,ip))
-	# exit()
 
 
 def adem():
 	server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	server.bind((listen['ip'],listen['port']))
+	# server.bind((listen['ip'],listen['port']))
+	server.bind(('0.0.0.0', 53))
 	while 1:
 		try:
 			data, client = server.recvfrom(512,)
@@ -132,17 +126,18 @@ def adem():
 	
 if __name__ == "__main__":
 
-	cf = configparser.ConfigParser()
-	cf.read('bjdns.conf')
-	listen = {
-			'ip':cf.get('listen','ip'),
-			'port':int(cf.get('listen','port'))
-			}
-	dns = {
-		'server':cf.get('dns','server'),
-		'port':int(cf.get('dns','port'))
-		}
-	google_ip = cf.get('fuckgfw','google_ip')
+	# cf = configparser.ConfigParser()
+	# cf.read('bjdns.conf')
+	# listen = {
+	# 		'ip':cf.get('listen','ip'),
+	# 		'port':int(cf.get('listen','port'))
+	# 		}
+	# dns = {
+	# 	'server':cf.get('dns','server'),
+	# 	'port':int(cf.get('dns','port'))
+	# 	}
+	# google_ip = cf.get('fuckgfw','google_ip')
+	google_ip = '64.233.162.83'
 	
 	cdn_list = open('cdnlist.txt','r').read().split('\n')
 	cdn_list.pop()
@@ -175,7 +170,7 @@ if __name__ == "__main__":
 			sys.exit()
 				
 				
-		print(dns)
+		# print(dns)
 		root = Tk()
 		root.tk.call('package', 'require', 'Winico')
 		icon = root.tk.call('winico', 'createfrom', os.path.join(os.getcwd(), 'py.ico'))	# New icon resources
