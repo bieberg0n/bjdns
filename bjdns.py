@@ -1,12 +1,16 @@
 import socket
 from struct import pack, unpack
-import configparser
+# import configparser
 import os
+import time
 import threading
 import requests
+import queue
+#from contextlib import contextmanager
 
 def get_data(data,cdn=0):
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	s.settimeout(2)
 	s.sendto(data, ('119.29.29.29', 53))
 	data = s.recv(512)
 	return data
@@ -66,64 +70,90 @@ def get_ip(res, data_len):
 	return ip
 
 
-def eva(data, client, server):
-	list_iter = iter(data[13:])
-	name      = ''
-	for bit in iter(lambda: next(list_iter), 0):
-		name += '.' if bit < 32 else chr(bit)
-	
-	type = unpack('>H',data[14+len(name):16+len(name)])
-	type = type[0]
-	if not type:
-		server.sendto(get_data(data), client)
-		
-	if [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
-		ip = google_ip
-		print('google', name, ip)
-		server.sendto(make_data(data, ip), client)
+def eva(queue, server, i):
+	# with lock:
+	while 1:
+		data, client = queue.get()
+		list_iter = iter(data[13:])
+		name      = ''
+		for bit in iter(lambda: next(list_iter), 0):
+			name += '.' if bit < 32 else chr(bit)
 
-	elif name in cache:
-		ip = cache[name]
-		print('cache', name, ip)
-		server.sendto(make_data(data, ip), client)
+		type = unpack('>H',data[14+len(name):16+len(name)])
+		type = type[0]
+		if not type:
+			server.sendto(get_data(data), client)
 
-	elif [ 1 for i in cdn_list if name.endswith(i) or name == i[1:] ]:
-		print('cdn', name)
-		res = get_data(data,cdn=1)
-		# res = get_data_by_tcp(data)
-		server.sendto(res, client)
-		if 'bjgong.tk' in name:
-			ip = get_ip(res, len(data))
+		if [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
+			ip = google_ip
+			print( client[0],
+				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+				   'google', name, ip, '({})'.format(i) )
+			server.sendto(make_data(data, ip), client)
+
+		elif name in cache:
+			ip = cache[name]
+			print(client[0],
+				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+				  'cache', name, ip, '({})'.format(i) )
+			server.sendto(make_data(data, ip), client)
+
+		elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
+			print(client[0],
+				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+				  'cdn', name, '({})'.format(i) )
+			try:
+				res = get_data(data,cdn=1)
+				# res = get_data_by_tcp(data)
+			except socket.timeout:
+				continue
+			server.sendto(res, client)
+			if 'bjgong.tk' in name:
+				try:
+					ip = get_ip(res, len(data))
+				except ValueError:
+					continue
+				cache[name] = ip
+
+		else:
+			try:
+				resp = get_data_by_tcp(data)
+				server.sendto(resp, client)
+				ip = get_ip(resp, len(data))
+			except (socket.timeout,ValueError):
+				# with ignored():
+				try:
+					ip = get_ip_by_openshift(name)
+					server.sendto(make_data(data,ip), client)
+				except:
+					continue
+
+			# ip = unpack('BBBB',data[32+len(name):36+len(name)])
+			# ip = '.'.join( [ str(i) for i in ip ] )
+			print(client[0],
+				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+				  name, ip, '({})'.format(i) )
 			cache[name] = ip
-		
-	else:
-		try:
-			resp = get_data_by_tcp(data)
-			server.sendto(resp, client)
-			ip = get_ip(resp, len(data))
-		except socket.timeout:
-			ip = get_ip_by_openshift(name)
-			server.sendto(make_data(data,ip), client)
-			
-		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
-		# ip = '.'.join( [ str(i) for i in ip ] )
-		print(name, ip)
-		cache[name] = ip
 
 
 def adem():
 	server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 	# server.bind((listen['ip'],listen['port']))
 	server.bind(('0.0.0.0', 53))
-	while 1:
-		try:
-			data, client = server.recvfrom(512,)
-		except ConnectionResetError:
-			continue
-		t = threading.Thread(target=eva,args=(data, client, server ))
+	queue_list = [ queue.Queue() for i in range(16) ]
+	# lock = threading.Lock()
+	for i in range(16):
+		t = threading.Thread(target=eva,args=(queue_list[i],server,i, ))
 		t.start()
+	while 1:
+		for q in queue_list:
+			try:
+				data, client = server.recvfrom(512,)
+				q.put((data,client))
+			except ConnectionResetError:
+				continue
 
-	
+
 if __name__ == "__main__":
 
 	# cf = configparser.ConfigParser()

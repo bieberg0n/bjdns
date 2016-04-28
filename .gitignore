@@ -67,3 +67,5 @@ cache.txt
 bjdns.7z
 bjdns_openshift.py
 bjdns.conf
+bjdns_old.py
+test.py
