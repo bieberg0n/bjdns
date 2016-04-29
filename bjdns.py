@@ -8,6 +8,18 @@ import requests
 import queue
 #from contextlib import contextmanager
 
+def inlist(name, dict):
+	name = name.split('.')
+	name.reverse()
+	for i in range(1,len(name)+1):
+		_name = list(reversed([ name[j] for j in range(i) ]))
+		_name = '.' + '.'.join(_name)
+		if dict.get(_name):
+			return True
+	else:
+		return False
+
+
 def get_data(data,cdn=0):
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 	s.settimeout(2)
@@ -84,24 +96,35 @@ def eva(queue, server, i):
 		if not type:
 			server.sendto(get_data(data), client)
 
-		if [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
-			ip = google_ip
-			print( client[0],
-				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				   'google', name, ip, '({})'.format(i) )
-			server.sendto(make_data(data, ip), client)
-
-		elif name in cache:
+		if name in cache:
 			ip = cache[name]
 			print(client[0],
 				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				  'cache', name, ip, '({})'.format(i) )
+				  '[cache]', name, ip, '({})'.format(i) )
 			server.sendto(make_data(data, ip), client)
 
-		elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
+		# elif [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
+		elif inlist(name, google):
+			ip = google_ip
+			print( client[0],
+				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+				   '[google]', name, ip, '({})'.format(i) )
+			server.sendto(make_data(data, ip), client)
+
+		# elif [ 1 for x in ad if name.endswith(x) or name == x[1:] ]:
+		elif inlist(name, ad):
+			ip = '127.0.0.1'
+			print( client[0],
+				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+				   '[ad]', name, ip, '({})'.format(i) )
+			server.sendto(make_data(data, ip), client)
+
+
+		# elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
+		elif inlist(name, cdn_list):
 			print(client[0],
 				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				  'cdn', name, '({})'.format(i) )
+				  '[cdn]', name, '({})'.format(i) )
 			try:
 				res = get_data(data,cdn=1)
 				# res = get_data_by_tcp(data)
@@ -168,9 +191,11 @@ if __name__ == "__main__":
 	# 	}
 	# google_ip = cf.get('fuckgfw','google_ip')
 	google_ip = '64.233.162.83'
-	
-	cdn_list = open('cdnlist.txt','r').read().split('\n')
-	cdn_list.pop()
+	cache = {}
+
+	# cdn_list = open('cdnlist.txt','r').read().split('\n')
+	cdn_list = { x:True for x in open('cdnlist.txt','r').read().split('\n') if x}
+	# cdn_list.pop()
 
 	# if not os.path.isfile('cache.txt'):
 	# 	open('cache.txt','w')
@@ -180,10 +205,14 @@ if __name__ == "__main__":
 	# with open('cache.txt','w') as f:
 	# 	for i in cache:
 	# 		f.write('{} {}\n'.format(i,cache[i]))
-	cache = {}
 
-	google = open('google.txt','r').read().split('\n')
-	google.pop()
+	google = { x:True for x in open('google.txt','r').read().split('\n') if x}
+	# google = open('google.txt','r').read().split('\n')
+	# google.pop()
+
+	# ad = open('ad.txt','r').read().split('\n')
+	ad = { x:True for x in open('ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
+	# ad.pop()
 
 	if os.name == 'nt':
 		import sys

@@ -69,3 +69,5 @@ bjdns_openshift.py
 bjdns.conf
 bjdns_old.py
 test.py
+ad/
+test1.py

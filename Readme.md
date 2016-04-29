@@ -3,18 +3,7 @@
 一个简陋的带缓存的DNS服务器，用于防止有关部门的DNS污染。
 
 ###Version
-[v160305]  
-开始使用特殊的dns渠道!
-
-[v160227]  
-砍掉永久缓存到文件的功能  
-
-[v0.4]  
-重构;  
-不缓存cdnlist里的域名;  
-使用tcp发dns请求。
-
-[v0.3]
+每个版本更新内容见commits,不再在此更新
 
 ###Support
 Windows/Linux/OS X
@@ -36,7 +25,7 @@ $sudo python3 bjdns.py
 任务栏图标右键弹出菜单可退出。  
 
 ####P.S.
-None.
+2016-04-29 加入过滤广告功能,如果不需要这个功能可自行删除ad.txt .  
 
 ###Reference
 [Python 实现DNS服务器(Pyhon域名解析服务器)](http://blog.csdn.net/trbbadboy/article/details/8093256)  
