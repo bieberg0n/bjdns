@@ -763,6 +763,7 @@
 .admin.hotkeys.com
 .admin.inq.com
 .adm.jjj8.cn
+.admob.com
 .ad.mo.doubleclick.net
 .admonkey.dapper.net
 .ad.moscowtimes.ru
@@ -1101,6 +1102,7 @@
 .ads.adxpose.mpire.akadns.net
 .ads.affiliates.match.com
 .ads.aftonbladet.se
+.adsage.com
 .ads.ahds.ac.uk
 .ads.ah-ha.com
 .ads.aintitcool.com
@@ -4891,6 +4893,7 @@
 .documents-signature.com
 .dogpile.112.2o7.net
 .d.oix.com
+.domob.cn
 .donotwatch.org
 .dontblockme.modaco.com
 .dontwatch.us
@@ -7145,6 +7148,7 @@
 .lexapro.3.p2l.info
 .lexapro.4.p2l.info
 .lg.brandreachsys.com
+.l.google.com
 .lh.secure.yahoo.com
 .liapentruromania.ro
 .liberty.gedads.com
@@ -8052,6 +8056,7 @@
 .mngiyrkdr.112.2o7.net
 .mo.5.p2l.info
 .mob.adwhirl.com
+.mobclix.com
 .mobile9.us.intellitxt.com
 .mobileads.msn.com
 .mobile.juicyads.com
@@ -8762,6 +8767,7 @@
 .opentable.tt.omtrdc.net
 .openx2.fotoflexer.com
 .openx.adfactor.nl
+.openx.com
 .openx.coolconcepts.nl
 .openx.shinyads.com
 .openx.xenium.pl
@@ -8798,6 +8804,8 @@
 .ourtoolbar.com
 .ousns.net
 .outerinfo.com
+.outfit7-affirmations.appspot.com
+.outfit7.com
 .outlets-online.pl
 .out.popads.net
 .out.true-counter.com
@@ -9378,6 +9386,7 @@
 .publishers.brokertraffic.com
 .publishing.kalooga.com
 .pub.mop.com
+.pubsage.com
 .pub.sapo.pt
 .pub.sheknows.com
 .pubs.hiddennetwork.com
@@ -9770,6 +9779,7 @@
 .safe.hyperpaysys.com
 .safenyplanet.in
 .s.agava.ru
+.sagetouch.com
 .sa.jumptap.com
 .salesforce.122.2o7.net
 .salesforcecom.tt.omtrdc.net
@@ -10155,6 +10165,7 @@
 .sm7.sitemeter.com
 .sm8.sitemeter.com
 .sm9.sitemeter.com
+.smaato.net
 .smartadserver
 .smartadserver.com
 .smart.besonders.ru

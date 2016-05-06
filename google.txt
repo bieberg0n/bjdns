@@ -230,7 +230,6 @@
 .googletagservices.com
 .googleusercontent.cn
 .googleusercontent.com
-.googlevideo.com
 .googlewave.com
 .gstatic.cn
 .gstatic.com

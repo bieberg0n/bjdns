@@ -103,14 +103,6 @@ def eva(queue, server, i):
 				  '[cache]', name, ip, '({})'.format(i) )
 			server.sendto(make_data(data, ip), client)
 
-		# elif [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
-		elif inlist(name, google):
-			ip = google_ip
-			print( client[0],
-				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				   '[google]', name, ip, '({})'.format(i) )
-			server.sendto(make_data(data, ip), client)
-
 		# elif [ 1 for x in ad if name.endswith(x) or name == x[1:] ]:
 		elif inlist(name, ad):
 			ip = '127.0.0.1'
@@ -119,6 +111,13 @@ def eva(queue, server, i):
 				   '[ad]', name, ip, '({})'.format(i) )
 			server.sendto(make_data(data, ip), client)
 
+		# elif [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
+		elif inlist(name, google):
+			ip = google_ip
+			print( client[0],
+				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+				   '[google]', name, ip, '({})'.format(i) )
+			server.sendto(make_data(data, ip), client)
 
 		# elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
 		elif inlist(name, cdn_list):
