@@ -5,8 +5,12 @@ import os
 import time
 import threading
 import requests
-import queue
+# import queue
 #from contextlib import contextmanager
+from gevent.server import DatagramServer
+# from gevent import socket
+from gevent import monkey
+monkey.patch_socket()
 
 def inlist(name, dict):
 	name = name.split('.')
@@ -82,98 +86,100 @@ def get_ip(res, data_len):
 	return ip
 
 
-def eva(queue, server, i):
+def eva(data, client):
 	# with lock:
-	while 1:
-		data, client = queue.get()
-		list_iter = iter(data[13:])
-		name      = ''
-		for bit in iter(lambda: next(list_iter), 0):
-			name += '.' if bit < 32 else chr(bit)
+	# while 1:
+	# data, client = queue.get()
+	list_iter = iter(data[13:])
+	name      = ''
+	for bit in iter(lambda: next(list_iter), 0):
+		name += '.' if bit < 32 else chr(bit)
 
-		type = unpack('>H',data[14+len(name):16+len(name)])
-		type = type[0]
-		if not type:
-			server.sendto(get_data(data), client)
+	type = unpack('>H',data[14+len(name):16+len(name)])
+	type = type[0]
+	if not type:
+		server.sendto(get_data(data), client)
 
-		if name in cache:
-			ip = cache[name]
-			print(client[0],
-				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				  '[cache]', name, ip, '({})'.format(i) )
-			server.sendto(make_data(data, ip), client)
+	if name in cache:
+		ip = cache[name]
+		print(client[0],
+			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+			  '[cache]', name, ip)#, '({})'.format(i) )
+		server.sendto(make_data(data, ip), client)
 
-		# elif [ 1 for x in ad if name.endswith(x) or name == x[1:] ]:
-		elif inlist(name, ad):
-			ip = '127.0.0.1'
-			print( client[0],
-				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				   '[ad]', name, ip, '({})'.format(i) )
-			server.sendto(make_data(data, ip), client)
+	# elif [ 1 for x in ad if name.endswith(x) or name == x[1:] ]:
+	elif inlist(name, ad):
+		ip = '127.0.0.1'
+		print( client[0],
+			   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+			   '[ad]', name, ip)#, '({})'.format(i) )
+		server.sendto(make_data(data, ip), client)
 
-		# elif [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
-		elif inlist(name, google):
-			ip = google_ip
-			print( client[0],
-				   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				   '[google]', name, ip, '({})'.format(i) )
-			server.sendto(make_data(data, ip), client)
+	# elif [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
+	elif inlist(name, google):
+		ip = google_ip
+		print( client[0],
+			   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+			   '[google]', name, ip)#, '({})'.format(i) )
+		server.sendto(make_data(data, ip), client)
 
-		# elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
-		elif inlist(name, cdn_list):
-			print(client[0],
-				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				  '[cdn]', name, '({})'.format(i) )
+	# elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
+	elif inlist(name, cdn_list):
+		print(client[0],
+			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+			  '[cdn]', name,)# '({})'.format(i) )
+		try:
+			res = get_data(data,cdn=1)
+			# res = get_data_by_tcp(data)
+		except socket.timeout:
+			# continue
+			return
+		server.sendto(res, client)
+		if 'bjgong.tk' in name:
 			try:
-				res = get_data(data,cdn=1)
-				# res = get_data_by_tcp(data)
-			except socket.timeout:
-				continue
-			server.sendto(res, client)
-			if 'bjgong.tk' in name:
-				try:
-					ip = get_ip(res, len(data))
-				except ValueError:
-					continue
-				cache[name] = ip
-
-		else:
-			try:
-				resp = get_data_by_tcp(data)
-				server.sendto(resp, client)
-				ip = get_ip(resp, len(data))
-			except (socket.timeout,ValueError):
-				# with ignored():
-				try:
-					ip = get_ip_by_openshift(name)
-					server.sendto(make_data(data,ip), client)
-				except:
-					continue
-
-			# ip = unpack('BBBB',data[32+len(name):36+len(name)])
-			# ip = '.'.join( [ str(i) for i in ip ] )
-			print(client[0],
-				  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-				  name, ip, '({})'.format(i) )
+				ip = get_ip(res, len(data))
+			except ValueError:
+				# continue
+				return
 			cache[name] = ip
 
-
-def adem():
-	server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	# server.bind((listen['ip'],listen['port']))
-	server.bind(('0.0.0.0', 53))
-	queue_list = [ queue.Queue() for i in range(16) ]
-	# lock = threading.Lock()
-	for i in range(16):
-		t = threading.Thread(target=eva,args=(queue_list[i],server,i, ))
-		t.start()
-	while 1:
-		for q in queue_list:
+	else:
+		try:
+			resp = get_data_by_tcp(data)
+			server.sendto(resp, client)
+			ip = get_ip(resp, len(data))
+		except (socket.timeout,ValueError):
+			# with ignored():
 			try:
-				data, client = server.recvfrom(512,)
-				q.put((data,client))
-			except ConnectionResetError:
-				continue
+				ip = get_ip_by_openshift(name)
+				server.sendto(make_data(data,ip), client)
+			except:
+				return
+
+		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
+		# ip = '.'.join( [ str(i) for i in ip ] )
+		print(client[0],
+			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+			  name, ip)#, '({})'.format(i) )
+		cache[name] = ip
+
+
+server = DatagramServer(('0.0.0.0',53), eva)
+def adem():
+	# server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+	# server.bind(('0.0.0.0', 53))
+	# queue_list = [ queue.Queue() for i in range(16) ]
+	# for i in range(16):
+	# 	t = threading.Thread(target=eva,args=(queue_list[i],server,i, ))
+	# 	t.start()
+	# while 1:
+	# 	for q in queue_list:
+	# 		try:
+	# 			data, client = server.recvfrom(512,)
+	# 			q.put((data,client))
+	# 		except ConnectionResetError:
+	# 			continue
+	server.serve_forever()
 
 
 if __name__ == "__main__":
@@ -213,6 +219,8 @@ if __name__ == "__main__":
 	ad = { x:True for x in open('ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
 	# ad.pop()
 
+	adem()
+	exit()
 	if os.name == 'nt':
 		import sys
 		from tkinter import Tk, Menu#,messagebox
