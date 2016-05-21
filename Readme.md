@@ -10,14 +10,20 @@ Windows/Linux/OS X
 
 ###Depends
 Python(>=3)  
-python-tkinter    
+requests  
+gevent  
+python-tkinter  
 [Winico](https://github.com/lijiejie/python-flash-trayicons/tree/master/winico0.6)(仅Windows依赖)  
 p.s. 打包版已内置以上依赖。
 
 ###Usage
 ####Linux/OS X:
+安装Python3.  
+安装依赖:
+> $ sudo pip3 install --upgrade requests gevent
+
 修改本机DNS为127.0.0.1，然后在终端输入  
-$sudo python3 bjdns.py  
+>$ sudo python3 bjdns.py  
 
 ####Windows:
 下载打包版[点我](https://github.com/bieberg0n/bjdns/releases)  

@@ -123,6 +123,13 @@ def eva(data, client):
 			   '[google]', name, ip)#, '({})'.format(i) )
 		server.sendto(make_data(data, ip), client)
 
+	# elif name.endswith('.googlevideo.com'):
+	# 	ip = '203.208.40.16'
+	# 	print( client[0],
+	# 		   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+	# 		   '[googlevideo]', name, ip)#, '({})'.format(i) )
+	# 	server.sendto(make_data(data, ip), client)
+
 	# elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
 	elif inlist(name, cdn_list):
 		print(client[0],
