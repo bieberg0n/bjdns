@@ -64,7 +64,7 @@ def make_data(data, ip):
 		'name':49164,
 		'type':1,
 		'classify':1,
-		'ttl':190,
+		'ttl':3600,
 		'datalength':4
 		}
 	res        += pack('>HHHLH', dns_answer['name'], dns_answer['type'],
@@ -87,6 +87,7 @@ def get_ip(res, data_len):
 
 
 def eva(data, client):
+	global cache, cache_date
 	# with lock:
 	# while 1:
 	# data, client = queue.get()
@@ -99,7 +100,13 @@ def eva(data, client):
 	type = type[0]
 	if not type:
 		server.sendto(get_data(data), client)
+		return
 
+	if int( time.time() ) - cache_date > 604800:
+		cache = {}
+		cache_date = int( time.time() )
+		print('cache flush')
+	
 	if name in cache:
 		ip = cache[name]
 		print(client[0],
@@ -204,6 +211,7 @@ if __name__ == "__main__":
 	# google_ip = cf.get('fuckgfw','google_ip')
 	google_ip = '64.233.162.83'
 	cache = {}
+	cache_date = int( time.time() )
 
 	# cdn_list = open('cdnlist.txt','r').read().split('\n')
 	cdn_list = { x:True for x in open('cdnlist.txt','r').read().split('\n') if x}
