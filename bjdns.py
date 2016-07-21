@@ -1,16 +1,13 @@
-import socket
+# import socket
 from struct import pack, unpack
-# import configparser
 import os
 import time
 import threading
 import requests
-# import queue
-#from contextlib import contextmanager
 from gevent.server import DatagramServer
-# from gevent import socket
-from gevent import monkey
-monkey.patch_socket()
+from gevent import socket
+# from gevent import monkey
+# monkey.patch_socket()
 
 def inlist(name, dict):
 	name = name.split('.')
@@ -36,7 +33,7 @@ def get_data_by_tcp(data):
 	data = pack('>H', len(data)) + data
 	s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.settimeout(2)
-	s.connect(('160.16.101.80', 5333))
+	s.connect(('g.bjgong.tk', 5353))
 	s.send(data)
 	res  = s.recv(512)
 	return res[2:]
@@ -88,9 +85,6 @@ def get_ip(res, data_len):
 
 def eva(data, client):
 	global cache, cache_date
-	# with lock:
-	# while 1:
-	# data, client = queue.get()
 	list_iter = iter(data[13:])
 	name      = ''
 	for bit in iter(lambda: next(list_iter), 0):
@@ -114,7 +108,6 @@ def eva(data, client):
 			  '[cache]', name, ip)#, '({})'.format(i) )
 		server.sendto(make_data(data, ip), client)
 
-	# elif [ 1 for x in ad if name.endswith(x) or name == x[1:] ]:
 	elif inlist(name, ad):
 		ip = '127.0.0.1'
 		print( client[0],
@@ -122,7 +115,6 @@ def eva(data, client):
 			   '[ad]', name, ip)#, '({})'.format(i) )
 		server.sendto(make_data(data, ip), client)
 
-	# elif [ 1 for x in google if name.endswith(x) or name == x[1:] ]:
 	elif inlist(name, google):
 		ip = google_ip
 		print( client[0],
@@ -130,30 +122,19 @@ def eva(data, client):
 			   '[google]', name, ip)#, '({})'.format(i) )
 		server.sendto(make_data(data, ip), client)
 
-	# elif name.endswith('.googlevideo.com'):
-	# 	ip = '203.208.40.16'
-	# 	print( client[0],
-	# 		   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-	# 		   '[googlevideo]', name, ip)#, '({})'.format(i) )
-	# 	server.sendto(make_data(data, ip), client)
-
-	# elif [ 1 for x in cdn_list if name.endswith(x) or name == x[1:] ]:
 	elif inlist(name, cdn_list):
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  '[cdn]', name,)# '({})'.format(i) )
 		try:
 			res = get_data(data,cdn=1)
-			# res = get_data_by_tcp(data)
 		except socket.timeout:
-			# continue
 			return
 		server.sendto(res, client)
 		if 'bjgong.tk' in name:
 			try:
 				ip = get_ip(res, len(data))
 			except ValueError:
-				# continue
 				return
 			cache[name] = ip
 
@@ -163,15 +144,12 @@ def eva(data, client):
 			server.sendto(resp, client)
 			ip = get_ip(resp, len(data))
 		except (socket.timeout,ValueError):
-			# with ignored():
 			try:
 				ip = get_ip_by_openshift(name)
 				server.sendto(make_data(data,ip), client)
 			except:
 				return
 
-		# ip = unpack('BBBB',data[32+len(name):36+len(name)])
-		# ip = '.'.join( [ str(i) for i in ip ] )
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  name, ip)#, '({})'.format(i) )
@@ -180,62 +158,22 @@ def eva(data, client):
 
 server = DatagramServer(('0.0.0.0',53), eva)
 def adem():
-	# server = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	# server.bind(('0.0.0.0', 53))
-	# queue_list = [ queue.Queue() for i in range(16) ]
-	# for i in range(16):
-	# 	t = threading.Thread(target=eva,args=(queue_list[i],server,i, ))
-	# 	t.start()
-	# while 1:
-	# 	for q in queue_list:
-	# 		try:
-	# 			data, client = server.recvfrom(512,)
-	# 			q.put((data,client))
-	# 		except ConnectionResetError:
-	# 			continue
 	server.serve_forever()
 
 
 if __name__ == "__main__":
 
-	# cf = configparser.ConfigParser()
-	# cf.read('bjdns.conf')
-	# listen = {
-	# 		'ip':cf.get('listen','ip'),
-	# 		'port':int(cf.get('listen','port'))
-	# 		}
-	# dns = {
-	# 	'server':cf.get('dns','server'),
-	# 	'port':int(cf.get('dns','port'))
-	# 	}
-	# google_ip = cf.get('fuckgfw','google_ip')
 	google_ip = '64.233.162.83'
 	cache = {}
 	cache_date = int( time.time() )
 
-	# cdn_list = open('cdnlist.txt','r').read().split('\n')
 	cdn_list = { x:True for x in open('cdnlist.txt','r').read().split('\n') if x}
-	# cdn_list.pop()
-
-	# if not os.path.isfile('cache.txt'):
-	# 	open('cache.txt','w')
-	# cache = open('cache.txt','r').read().split('\n')
-	# cache.pop()
-	# cache = { x.split()[0]:x.split()[1] for x in cache }
-	# with open('cache.txt','w') as f:
-	# 	for i in cache:
-	# 		f.write('{} {}\n'.format(i,cache[i]))
 
 	google = { x:True for x in open('google.txt','r').read().split('\n') if x}
-	# google = open('google.txt','r').read().split('\n')
-	# google.pop()
-
-	# ad = open('ad.txt','r').read().split('\n')
 	ad = { x:True for x in open('ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
-	# ad.pop()
 
-	adem()
-	exit()
+	# adem()
+	# exit()
 	if os.name == 'nt':
 		import sys
 		from tkinter import Tk, Menu#,messagebox
