@@ -1,13 +1,12 @@
-# import socket
+#coding=utf-8
+import socket
 from struct import pack, unpack
 import os
 import time
 import threading
 import requests
 from gevent.server import DatagramServer
-from gevent import socket
-# from gevent import monkey
-# monkey.patch_socket()
+#from gevent import socket
 
 def inlist(name, dict):
 	name = name.split('.')
@@ -143,7 +142,7 @@ def eva(data, client):
 			resp = get_data_by_tcp(data)
 			server.sendto(resp, client)
 			ip = get_ip(resp, len(data))
-		except (socket.timeout,ValueError):
+		except (socket.timeout,ValueError,ConnectionResetError):
 			try:
 				ip = get_ip_by_openshift(name)
 				server.sendto(make_data(data,ip), client)
@@ -156,7 +155,25 @@ def eva(data, client):
 		cache[name] = ip
 
 
-server = DatagramServer(('0.0.0.0',53), eva)
+if os.name == 'ntx':
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s.bind( ('0.0.0.0', 53) )
+	server = s
+else:
+	from gevent import monkey
+	monkey.patch_socket()
+	server = DatagramServer(('0.0.0.0',53), eva)
+
+
+def adem_thread():
+	while 1:
+		try:
+			data, client = s.recvfrom(512)
+			threading.Thread(target=eva,args=(data, client,)).start()
+		except ConnectionResetError:
+			pass
+
+
 def adem():
 	server.serve_forever()
 
@@ -172,9 +189,12 @@ if __name__ == "__main__":
 	google = { x:True for x in open('google.txt','r').read().split('\n') if x}
 	ad = { x:True for x in open('ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
 
-	# adem()
-	# exit()
+	#adem()
+	#exit()
 	if os.name == 'nt':
+		adem()
+		exit()
+
 		import sys
 		from tkinter import Tk, Menu#,messagebox
 
@@ -201,10 +221,10 @@ if __name__ == "__main__":
 		menu.add_command(label='退出', command=quit)
 
 		root.withdraw()
-		t = threading.Thread(target=adem)
+		t = threading.Thread(target=adem_thread)
 		t.setDaemon(True)
 		t.start()
 		root.mainloop()
-		
+
 	else:
 		adem()
