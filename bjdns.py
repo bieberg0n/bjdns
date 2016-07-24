@@ -32,7 +32,7 @@ def get_data_by_tcp(data):
 	data = pack('>H', len(data)) + data
 	s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.settimeout(2)
-	s.connect(('g.bjgong.tk', 5353))
+	s.connect(('g.bjong.tk', 5353))
 	s.send(data)
 	res  = s.recv(512)
 	return res[2:]
@@ -41,7 +41,7 @@ def get_data_by_tcp(data):
 s = requests.session()
 def get_ip_by_openshift(name):
 	# ip = s.post('https://mc-bieber.rhcloud.com',data={'n':name}).text
-	ip = s.post('http://rss.bjgong.tk',data={'n':name}).text
+	ip = s.post('http://rss.bjong.tk',data={'n':name}).text
 	return ip
 
 	
@@ -130,12 +130,18 @@ def eva(data, client):
 		except socket.timeout:
 			return
 		server.sendto(res, client)
-		if 'bjgong.tk' in name:
-			try:
-				ip = get_ip(res, len(data))
-			except ValueError:
-				return
-			cache[name] = ip
+
+	elif 'bjong.tk' in name:
+		res = get_data(data,cdn=1)
+		server.sendto(res, client)
+		print(client[0],
+			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+			  '[cdn]', name,)# '({})'.format(i) )
+		try:
+			ip = get_ip(res, len(data))
+		except ValueError:
+			return
+		cache[name] = ip
 
 	else:
 		try:
