@@ -32,7 +32,7 @@ def get_data_by_tcp(data):
 	data = pack('>H', len(data)) + data
 	s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.settimeout(2)
-	s.connect(('g.bjong.tk', 5353))
+	s.connect(('g.bjong.me', 5353))
 	s.send(data)
 	res  = s.recv(512)
 	return res[2:]
@@ -41,7 +41,7 @@ def get_data_by_tcp(data):
 s = requests.session()
 def get_ip_by_openshift(name):
 	# ip = s.post('https://mc-bieber.rhcloud.com',data={'n':name}).text
-	ip = s.post('http://rss.bjong.tk',data={'n':name}).text
+	ip = s.post('http://bjdns.bjong.me',data={'n':name}).text
 	return ip
 
 	
@@ -131,7 +131,7 @@ def eva(data, client):
 			return
 		server.sendto(res, client)
 
-	elif 'bjong.tk' in name:
+	elif 'bjong.me' in name:
 		res = get_data(data,cdn=1)
 		server.sendto(res, client)
 		print(client[0],
