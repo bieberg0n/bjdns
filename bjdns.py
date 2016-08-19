@@ -95,7 +95,7 @@ def eva(data, client):
 		server.sendto(get_data(data), client)
 		return
 
-	if int( time.time() ) - cache_date > 604800:
+	if int( time.time() ) - cache_date > 259200:
 		cache = {}
 		cache_date = int( time.time() )
 		print('cache flush')
