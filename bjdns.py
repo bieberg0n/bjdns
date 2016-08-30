@@ -75,10 +75,23 @@ def make_data(data, ip):
 	return res
 
 
-def get_ip(res, data_len):
+def get_ip_from_resp(res, data_len):
 	index_0101 = res[data_len:].index(b'\x00\x01\x00\x01')
 	ip_bytes   = unpack('BBBB',res[data_len:][index_0101+10:index_0101+14])
 	ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
+	return ip
+
+
+def get_ip(data, name):
+	try:
+		resp = get_data_by_tcp(data)
+		ip = get_ip_from_resp(resp, len(data))
+	except (socket.timeout,ValueError,ConnectionResetError):
+		try:
+			ip = get_ip_by_openshift(name)
+		except:
+			return
+
 	return ip
 
 
@@ -95,10 +108,10 @@ def eva(data, client):
 		server.sendto(get_data(data), client)
 		return
 
-	if int( time.time() ) - cache_date > 259200:
-		cache = {}
-		cache_date = int( time.time() )
-		print('cache flush')
+	# if int( time.time() ) - cache_date > 259200:
+	# 	cache = {}
+	# 	cache_date = int( time.time() )
+	# 	print('cache flush')
 	
 	if name in cache:
 		ip = cache[name]
@@ -106,6 +119,14 @@ def eva(data, client):
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  '[cache]', name, ip)#, '({})'.format(i) )
 		server.sendto(make_data(data, ip), client)
+		if inlist(name, cdn_list):
+			res = get_data(data,cdn=1)
+			ip_new = get_ip_from_resp(res, len(data))
+		else:
+			ip_new = get_ip(data, name)
+		print('now ip:', ip_new)
+		if ip != ip_new:
+			cache[name] = ip_new
 
 	elif inlist(name, ad):
 		ip = '127.0.0.1'
@@ -130,6 +151,8 @@ def eva(data, client):
 		except socket.timeout:
 			return
 		server.sendto(res, client)
+		ip = get_ip_from_resp(res, len(data))
+		cache[name] = ip
 
 	elif 'bjong.me' in name:
 		res = get_data(data,cdn=1)
@@ -138,23 +161,14 @@ def eva(data, client):
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  '[cdn]', name,)# '({})'.format(i) )
 		try:
-			ip = get_ip(res, len(data))
+			ip = get_ip_from_resp(res, len(data))
 		except ValueError:
 			return
 		cache[name] = ip
 
 	else:
-		try:
-			resp = get_data_by_tcp(data)
-			server.sendto(resp, client)
-			ip = get_ip(resp, len(data))
-		except (socket.timeout,ValueError,ConnectionResetError):
-			try:
-				ip = get_ip_by_openshift(name)
-				server.sendto(make_data(data,ip), client)
-			except:
-				return
-
+		ip = get_ip(data, name)
+		server.sendto(make_data(data,ip), client)
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  name, ip)#, '({})'.format(i) )
@@ -188,7 +202,7 @@ if __name__ == "__main__":
 
 	google_ip = '64.233.162.83'
 	cache = {}
-	cache_date = int( time.time() )
+	# cache_date = int( time.time() )
 
 	cdn_list = { x:True for x in open('cdnlist.txt','r').read().split('\n') if x}
 
