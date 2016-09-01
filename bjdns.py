@@ -60,7 +60,7 @@ def make_data(data, ip):
 		'name':49164,
 		'type':1,
 		'classify':1,
-		'ttl':3600,
+		'ttl':600,
 		'datalength':4
 		}
 	res        += pack('>HHHLH', dns_answer['name'], dns_answer['type'],
@@ -124,7 +124,7 @@ def eva(data, client):
 			ip_new = get_ip_from_resp(res, len(data))
 		else:
 			ip_new = get_ip(data, name)
-		print('now ip:', ip_new)
+		# print('now ip:', ip_new)
 		if ip != ip_new:
 			cache[name] = ip_new
 
