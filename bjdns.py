@@ -86,7 +86,8 @@ def get_ip(data, name):
 	try:
 		resp = get_data_by_tcp(data)
 		ip = get_ip_from_resp(resp, len(data))
-	except (socket.timeout,ValueError,ConnectionResetError):
+	except (socket.timeout,ValueError,ConnectionResetError) as e:
+		print(e)
 		try:
 			ip = get_ip_by_openshift(name)
 		except:
@@ -119,7 +120,7 @@ def eva(data, client):
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  '[cache]', name, ip)#, '({})'.format(i) )
 		server.sendto(make_data(data, ip), client)
-		if inlist(name, cdn_list):
+		if inlist(name, cdn_list) or 'bjong.me' in name:
 			res = get_data(data,cdn=1)
 			ip_new = get_ip_from_resp(res, len(data))
 		else:
