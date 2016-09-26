@@ -6,6 +6,7 @@ import time
 import threading
 import requests
 from gevent.server import DatagramServer
+import re
 #from gevent import socket
 
 def inlist(name, dict):
@@ -21,17 +22,23 @@ def inlist(name, dict):
 
 
 def get_data(data,cdn=0):
+	# data = pack('>H', len(data)) + data
+	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 	s.settimeout(2)
 	s.sendto(data, ('119.29.29.29', 53))
 	data = s.recv(512)
 	return data
+	# s.connect(('114.114.114.114', 53))
+	# s.send(data)
+	# res  = s.recv(512)
+	# return res[2:]
 
 
 def get_data_by_tcp(data):
 	data = pack('>H', len(data)) + data
 	s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.settimeout(2)
+	# s.settimeout(5)
 	s.connect(('g.bjong.me', 5353))
 	s.send(data)
 	res  = s.recv(512)
@@ -76,22 +83,41 @@ def make_data(data, ip):
 
 
 def get_ip_from_resp(res, data_len):
-	index_0101 = res[data_len:].index(b'\x00\x01\x00\x01')
-	ip_bytes   = unpack('BBBB',res[data_len:][index_0101+10:index_0101+14])
+	res = res[data_len:]
+	# res_old = res
+	# res1 = res[:]
+	# while b'\x00\x01\x00\x01' in res:
+	# res = res[res.index(b'\xc0\x0c\x00\x01\x00\x01'):]
+	p = re.compile(b'\xc0.\x00\x01\x00\x01')
+	# print(p.split(res))
+	try:
+		res = p.split(res)[1]
+	except IndexError as e:
+		# print(e, res)
+		return '127.0.0.1'
+	# print(res_old)
+	# print(res)
+	# print(res1)
+	# index_0101 = res[data_len:].index(b'\x00\x01\x00\x01')
+	# ip_bytes   = res[data_len].split(b'\x00\x01\x00\x01')[-1]
+	# ip_bytes   = unpack('BBBB',res[data_len:][index_0101+10:index_0101+14])
+	ip_bytes   = unpack('BBBB',res[6:10])
+	# ip_bytes = res[-4:]
 	ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
+	# print(ip_bytes,res[data_len:][index_0101+10:])
 	return ip
 
 
 def get_ip(data, name):
-	try:
-		resp = get_data_by_tcp(data)
-		ip = get_ip_from_resp(resp, len(data))
-	except (socket.timeout,ValueError,ConnectionResetError) as e:
-		print(e)
-		try:
-			ip = get_ip_by_openshift(name)
-		except:
-			return
+	# try:
+	resp = get_data_by_tcp(data)
+	ip = get_ip_from_resp(resp, len(data))
+	# except (socket.timeout,ValueError,ConnectionResetError) as e:
+	# 	print(e)
+	# 	try:
+	# 		ip = get_ip_by_openshift(name)
+	# 	except:
+	# 		return
 
 	return ip
 
@@ -149,7 +175,8 @@ def eva(data, client):
 			  '[cdn]', name,)# '({})'.format(i) )
 		try:
 			res = get_data(data,cdn=1)
-		except socket.timeout:
+		except socket.timeout as e:
+			print(e)
 			return
 		server.sendto(res, client)
 		ip = get_ip_from_resp(res, len(data))
