@@ -90,11 +90,11 @@ def get_ip_from_resp(res, data_len):
 	# res = res[res.index(b'\xc0\x0c\x00\x01\x00\x01'):]
 	p = re.compile(b'\xc0.\x00\x01\x00\x01')
 	# print(p.split(res))
-	try:
-		res = p.split(res)[1]
-	except IndexError as e:
-		# print(e, res)
-		return '127.0.0.1'
+	# try:
+	res = p.split(res)[1]
+	# except IndexError as e:
+	# 	# print(e, res)
+	# 	return '127.0.0.1'
 	# print(res_old)
 	# print(res)
 	# print(res1)
