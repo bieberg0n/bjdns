@@ -3,6 +3,8 @@ import socket
 from struct import pack, unpack
 import os
 import time
+import socks
+import json
 import threading
 import requests
 from gevent.server import DatagramServer
@@ -37,21 +39,14 @@ def get_data(data,cdn=0):
 
 def get_data_by_tcp(data):
 	data = pack('>H', len(data)) + data
-	s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	# s.settimeout(5)
-	s.connect(('g.bjong.me', 5353))
+	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s = socks.socksocket()
+	s.connect( ('8.8.8.8',53) )
 	s.send(data)
 	res  = s.recv(512)
 	return res[2:]
 
 
-s = requests.session()
-def get_ip_by_openshift(name):
-	# ip = s.post('https://mc-bieber.rhcloud.com',data={'n':name}).text
-	ip = s.post('http://bjdns.bjong.me',data={'n':name}).text
-	return ip
-
-	
 def make_data(data, ip):
 	#data即请求包
 	(id, flags, quests,
@@ -84,41 +79,16 @@ def make_data(data, ip):
 
 def get_ip_from_resp(res, data_len):
 	res = res[data_len:]
-	# res_old = res
-	# res1 = res[:]
-	# while b'\x00\x01\x00\x01' in res:
-	# res = res[res.index(b'\xc0\x0c\x00\x01\x00\x01'):]
 	p = re.compile(b'\xc0.\x00\x01\x00\x01')
-	# print(p.split(res))
-	# try:
 	res = p.split(res)[1]
-	# except IndexError as e:
-	# 	# print(e, res)
-	# 	return '127.0.0.1'
-	# print(res_old)
-	# print(res)
-	# print(res1)
-	# index_0101 = res[data_len:].index(b'\x00\x01\x00\x01')
-	# ip_bytes   = res[data_len].split(b'\x00\x01\x00\x01')[-1]
-	# ip_bytes   = unpack('BBBB',res[data_len:][index_0101+10:index_0101+14])
 	ip_bytes   = unpack('BBBB',res[6:10])
-	# ip_bytes = res[-4:]
 	ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
-	# print(ip_bytes,res[data_len:][index_0101+10:])
 	return ip
 
 
 def get_ip(data, name):
-	# try:
 	resp = get_data_by_tcp(data)
 	ip = get_ip_from_resp(resp, len(data))
-	# except (socket.timeout,ValueError,ConnectionResetError) as e:
-	# 	print(e)
-	# 	try:
-	# 		ip = get_ip_by_openshift(name)
-	# 	except:
-	# 		return
-
 	return ip
 
 
@@ -135,16 +105,11 @@ def eva(data, client):
 		server.sendto(get_data(data), client)
 		return
 
-	# if int( time.time() ) - cache_date > 259200:
-	# 	cache = {}
-	# 	cache_date = int( time.time() )
-	# 	print('cache flush')
-	
 	if name in cache:
 		ip = cache[name]
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-			  '[cache]', name, ip)#, '({})'.format(i) )
+			  '[cache]', name, ip)
 		server.sendto(make_data(data, ip), client)
 		if inlist(name, cdn_list) or 'bjong.me' in name:
 			res = get_data(data,cdn=1)
@@ -159,20 +124,20 @@ def eva(data, client):
 		ip = '127.0.0.1'
 		print( client[0],
 			   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-			   '[ad]', name, ip)#, '({})'.format(i) )
+			   '[ad]', name, ip)
 		server.sendto(make_data(data, ip), client)
 
 	elif inlist(name, google):
 		ip = google_ip
 		print( client[0],
 			   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-			   '[google]', name, ip)#, '({})'.format(i) )
+			   '[google]', name, ip)
 		server.sendto(make_data(data, ip), client)
 
 	elif inlist(name, cdn_list):
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-			  '[cdn]', name,)# '({})'.format(i) )
+			  '[cdn]', name,)
 		try:
 			res = get_data(data,cdn=1)
 		except socket.timeout as e:
@@ -182,35 +147,13 @@ def eva(data, client):
 		ip = get_ip_from_resp(res, len(data))
 		cache[name] = ip
 
-	elif 'bjong.me' in name:
-		res = get_data(data,cdn=1)
-		server.sendto(res, client)
-		print(client[0],
-			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-			  '[cdn]', name,)# '({})'.format(i) )
-		try:
-			ip = get_ip_from_resp(res, len(data))
-		except ValueError:
-			return
-		cache[name] = ip
-
 	else:
 		ip = get_ip(data, name)
 		server.sendto(make_data(data,ip), client)
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-			  name, ip)#, '({})'.format(i) )
+			  name, ip)
 		cache[name] = ip
-
-
-if os.name == 'ntx':
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s.bind( ('0.0.0.0', 53) )
-	server = s
-else:
-	from gevent import monkey
-	monkey.patch_socket()
-	server = DatagramServer(('0.0.0.0',53), eva)
 
 
 def adem_thread():
@@ -227,6 +170,14 @@ def adem():
 
 
 if __name__ == "__main__":
+	if os.name == 'nt':
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.bind( ('0.0.0.0', 53) )
+		server = s
+	else:
+		from gevent import monkey
+		monkey.patch_socket()
+		server = DatagramServer(('0.0.0.0',53), eva)
 
 	google_ip = '64.233.162.83'
 	cache = {}
@@ -237,11 +188,13 @@ if __name__ == "__main__":
 	google = { x:True for x in open('google.txt','r').read().split('\n') if x}
 	ad = { x:True for x in open('ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
 
-	#adem()
-	#exit()
+	json_str = open('bjdns.json').read()
+	json_dict = json.loads(json_str)
+	ss_ip, ss_port = json_dict['socks5_server'].split(':')
+	socks.set_default_proxy(socks.SOCKS5, ss_ip, int(ss_port))
 	if os.name == 'nt':
-		adem()
-		exit()
+		# adem()
+		# exit()
 
 		import sys
 		from tkinter import Tk, Menu#,messagebox
