@@ -6,7 +6,7 @@
 ###Feature
 * 2016-10-19  
 从本次更新开始bjdns需要配合shadowsocks或其他socks5代理使用。  
-在bjdns.json中填写shadowsocks客户端监听的地址与端口，默认为 127.0.0.1:1080 。
+在bjdns.json中填写shadowsocks客户端监听的ip地址（不要填域名）与端口，默认为 127.0.0.1:1080 。
 
 * 2016-04-29  
 加入过滤广告功能,如果不需要这个功能可自行删除ad.txt .  
