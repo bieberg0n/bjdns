@@ -6,10 +6,12 @@ import time
 import socks
 import json
 import threading
-import requests
-from gevent.server import DatagramServer
+# import requests
+# from gevent.server import DatagramServer
 import re
-#from gevent import socket
+# from gevent import socket
+# from gevent import monkey
+# monkey.patch_socket()
 
 def inlist(name, dict):
 	name = name.split('.')
@@ -27,7 +29,7 @@ def get_data(data,cdn=0):
 	# data = pack('>H', len(data)) + data
 	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	s.settimeout(2)
+	# s.settimeout(2)
 	s.sendto(data, ('119.29.29.29', 53))
 	data = s.recv(512)
 	return data
@@ -38,12 +40,25 @@ def get_data(data,cdn=0):
 
 
 def get_data_by_tcp(data):
+	# print('get_data_by_tcp')
 	data = pack('>H', len(data)) + data
 	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s = socks.socksocket()
 	s.connect( ('8.8.8.8',53) )
 	s.send(data)
-	res  = s.recv(512)
+	# res = b''
+	# for buf in iter(lambda:s.recv(1024),b''):
+	# 	print('buf: ', buf)
+	res = s.recv(512)
+	length = unpack('>H', res[:2])[0]
+	# print(length)
+	if length <= len(res) - 2:
+		pass
+	else:
+		while len(res) - 2 < length:
+			res += s.recv(512)
+	s.close()
+	# print('get_data_by_tcp over')
 	return res[2:]
 
 
@@ -86,13 +101,14 @@ def get_ip_from_resp(res, data_len):
 	return ip
 
 
-def get_ip(data, name):
-	resp = get_data_by_tcp(data)
-	ip = get_ip_from_resp(resp, len(data))
-	return ip
+# def get_ip(data, name):
+# 	resp = get_data_by_tcp(data)
+# 	ip = get_ip_from_resp(resp, len(data))
+# 	return ip
 
 
 def eva(data, client):
+	# print(client)
 	global cache, cache_date
 	list_iter = iter(data[13:])
 	name      = ''
@@ -106,16 +122,26 @@ def eva(data, client):
 		return
 
 	if name in cache:
+		# print('cache')
 		ip = cache[name]
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  '[cache]', name, ip)
 		server.sendto(make_data(data, ip), client)
-		if inlist(name, cdn_list) or 'bjong.me' in name:
+		if inlist(name, cdn_list):
 			res = get_data(data,cdn=1)
-			ip_new = get_ip_from_resp(res, len(data))
+			try:
+				ip_new = get_ip_from_resp(res, len(data))
+			except IndexError:
+				# print(res)
+				return
 		else:
-			ip_new = get_ip(data, name)
+			try:
+				resp = get_data_by_tcp(data)
+				ip_new = get_ip_from_resp(resp, len(data))
+			except IndexError:
+				# print(resp)
+				return
 		# print('now ip:', ip_new)
 		if ip != ip_new:
 			cache[name] = ip_new
@@ -138,17 +164,27 @@ def eva(data, client):
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  '[cdn]', name,)
-		try:
-			res = get_data(data,cdn=1)
-		except socket.timeout as e:
-			print(e)
-			return
+		# try:
+		res = get_data(data,cdn=1)
+		# except socket.timeout as e:
+		# 	print(e)
+		# 	return
 		server.sendto(res, client)
-		ip = get_ip_from_resp(res, len(data))
+		try:
+			ip = get_ip_from_resp(res, len(data))
+		except IndexError:
+			# print(res)
+			return
 		cache[name] = ip
 
 	else:
-		ip = get_ip(data, name)
+		# ip = get_ip(data, name)
+		try:
+			resp = get_data_by_tcp(data)
+			ip = get_ip_from_resp(resp, len(data))
+		except IndexError:
+			# print(resp)
+			return
 		server.sendto(make_data(data,ip), client)
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
@@ -170,14 +206,12 @@ def adem():
 
 
 if __name__ == "__main__":
-	if os.name == 'nt':
-		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		s.bind( ('0.0.0.0', 53) )
-		server = s
-	else:
-		from gevent import monkey
-		monkey.patch_socket()
-		server = DatagramServer(('0.0.0.0',53), eva)
+	# if os.name == 'nt':
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s.bind( ('0.0.0.0', 53) )
+	server = s
+	# else:
+	# 	server = DatagramServer(('0.0.0.0',53), eva)
 
 	google_ip = '64.233.162.83'
 	cache = {}
@@ -228,4 +262,5 @@ if __name__ == "__main__":
 		root.mainloop()
 
 	else:
-		adem()
+		# adem()
+		adem_thread()
