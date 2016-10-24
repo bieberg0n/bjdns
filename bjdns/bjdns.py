@@ -17,6 +17,16 @@ from gevent import socket
 # from gevent import monkey
 # monkey.patch_socket()
 
+server = None
+google_ip = '64.233.162.83'
+cdn_list = {}
+google = {}
+ad = {}
+cache = {}
+listen_addr = ()
+dns_cn_addr = ()
+dns_foreign_addr = ()
+
 def inlist(name, dict_):
 	name = name.split('.')
 	name.reverse()
@@ -34,7 +44,7 @@ def get_data(data,cdn=0):
 	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 	# s.settimeout(2)
-	s.sendto(data, ('119.29.29.29', 53))
+	s.sendto(data, dns_cn_addr)
 	data = s.recv(512)
 	return data
 	# s.connect(('114.114.114.114', 53))
@@ -49,7 +59,7 @@ def get_data_by_tcp(data):
 	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	# s = geventsocks.socksocket()
 	s = socket.socket()
-	geventsocks.connect(s, ('8.8.8.8',53) )
+	geventsocks.connect(s, dns_foreign_addr)
 	s.send(data)
 	# res = b''
 	# for buf in iter(lambda:s.recv(1024),b''):
@@ -129,7 +139,6 @@ def eva(data, client):
 		return
 
 	if name in cache:
-		# print('cache')
 		ip = cache[name]
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
@@ -182,31 +191,9 @@ def eva(data, client):
 		cache[name] = ip
 
 
-def adem_thread():
-	while 1:
-		try:
-			data, client = s.recvfrom(512)
-			threading.Thread(target=eva,args=(data, client,)).start()
-		except ConnectionResetError:
-			pass
-
-
-def adem():
-	server.serve_forever()
-
-
 def main():
 	global server, google_ip, cache, cdn_list, google, ad
-
-	if os.name == 'nt':
-		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		s.bind( ('0.0.0.0', 53) )
-		server = s
-	else:
-		server = DatagramServer(('0.0.0.0',53), eva)
-
-	google_ip = '64.233.162.83'
-	cache = {}
+	global dns_cn_addr, dns_foreign_addr
 
 	cdn_list = { x:True for x in open('bjdns/cdnlist.txt','r').read().split('\n') if x}
 
@@ -220,6 +207,9 @@ def main():
 	json_str = open(json_dir).read()
 	json_dict = json.loads(json_str)
 	ss_ip, ss_port = json_dict['socks5_server'].split(':')
+	listen_addr = (json_dict['listen_ip'], json_dict['listen_port'])
+	dns_cn_addr = (json_dict['dns_cn_ip'], json_dict['dns_cn_port'])
+	dns_foreign_addr = (json_dict['dns_foreign_ip'], json_dict['dns_foreign_port'])
 	geventsocks.set_default_proxy(ss_ip, int(ss_port))
 
 	if os.name == 'nt':
@@ -228,6 +218,14 @@ def main():
 
 		import threading
 		from tkinter import Tk, Menu#,messagebox
+
+		def adem_thread(s):
+			while 1:
+				try:
+					data, client = s.recvfrom(512)
+					threading.Thread(target=eva,args=(data, client,)).start()
+				except ConnectionResetError:
+					pass
 
 		def menu_func(event, x, y):
 			if event == 'WM_RBUTTONDOWN':	# Right click tray icon, pop up menu
@@ -239,6 +237,9 @@ def main():
 			root.destroy()
 			sys.exit()
 				
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.bind( listen_addr )
+
 		root = Tk()
 		root.tk.call('package', 'require', 'Winico')
 		icon = root.tk.call('winico', 'createfrom', os.path.join(os.getcwd(), 'py.ico'))	# New icon resources
@@ -250,14 +251,14 @@ def main():
 		menu.add_command(label='退出', command=quit)
 
 		root.withdraw()
-		t = threading.Thread(target=adem_thread)
+		t = threading.Thread(target=adem_thread, args=(s,))
 		t.setDaemon(True)
 		t.start()
 		root.mainloop()
 
 	else:
-		adem()
-		# adem_thread()
+		server = DatagramServer(listen_addr, eva)
+		server.serve_forever()
 
 if __name__ == '__main__':
 	main()
