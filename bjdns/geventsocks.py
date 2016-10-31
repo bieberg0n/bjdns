@@ -2,7 +2,7 @@
 # copyright 2016 bjong
 
 from struct import pack
-
+from gevent import socket
 
 _proxy_dst = None
 _proxy_port = None
@@ -14,28 +14,27 @@ def set_default_proxy(proxy_serv, port):
 
 def valid_ip(address):
 	try:
-		socket.inet_aton(address)
-		return True
+		ip_bytes = socket.inet_aton(address)
+		return ip_bytes
 	except:
 		return False
 
 def connect(sock, addr):
-	# _sock = socket.socket()
 	sock.connect( (_proxy_dst, _proxy_port) )
 	sock.sendall(b'\x05\x01\x00')
 	r = sock.recv(512)
 	if r == b'\x05\x00':
-		# _sock.connect = _connect
-		# return _sock
 		pass
 	else:
 		raise Exception("connect fail")
 
 	dst, port = addr
-	if valid_ip(dst):
-		ip = dst.split('.')
-		ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
-						int(ip[2]), int(ip[3]))
+	ip_bytes = valid_ip(dst)
+	if ip_bytes:
+		# ip = dst.split('.')
+		# ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
+		# 				int(ip[2]), int(ip[3]))
+		# ip_bytes = socket.inet_aton(dst)
 		port_bytes = pack('>H', port)
 		sock.sendall(b'\x05\x01\x00\x01' + ip_bytes + port_bytes)
 	else:
@@ -47,20 +46,15 @@ def connect(sock, addr):
 
 	r = sock.recv(512)
 	if r.startswith(b'\x05\x00'):
-		# return _sock
 		pass
 	else:
 		raise Exception("connect fail")
 
 
-# s = Socks()
-# _sock.connect = _connect
 if __name__ == '__main__':
-	set_default_proxy('127.0.0.1', 1081)
-	# connect(('ip.cn', 53))
-	# s = socks()
-	# s = socksocket()
+	# print(valid_ip('8.8.8.8'))
+	# exit()
+	set_default_proxy('127.0.0.1', 1080)
 	from gevent import socket
 	s = socket.socket()
-	# s.set_default_proxy('127.0.0.1', 1081)
-	connect(s, ('ip.cn', 53))
+	connect(s, ('8.8.8.8', 53))

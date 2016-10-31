@@ -107,16 +107,17 @@ def make_data(data, ip):
 	return res
 
 
-def get_ip_from_resp(res, data_len):
+def get_ip_from_resp(res, data_len, ip='127.0.0.1'):
 	res = res[data_len:]
 	p = re.compile(b'\xc0.\x00\x01\x00\x01')
-	# try:
-	res = p.split(res)[1]
-	# except IndexError:
+	try:
+		res = p.split(res)[1]
+		ip_bytes   = unpack('BBBB',res[6:10])
+		ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
+	except IndexError:
 	# 	raise Exception('get ip fail')
 	# 	return
-	ip_bytes   = unpack('BBBB',res[6:10])
-	ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
+		ip = ip
 	return ip
 
 
@@ -146,10 +147,10 @@ def eva(data, client):
 		server.sendto(make_data(data, ip), client)
 		if inlist(name, cdn_list):
 			res = get_data(data,cdn=1)
-			ip_new = get_ip_from_resp(res, len(data))
+			ip_new = get_ip_from_resp(res, len(data), ip)
 		else:
 			resp = get_data_by_tcp(data)
-			ip_new = get_ip_from_resp(resp, len(data))
+			ip_new = get_ip_from_resp(resp, len(data), ip)
 		if ip != ip_new:
 			cache[name] = ip_new
 
