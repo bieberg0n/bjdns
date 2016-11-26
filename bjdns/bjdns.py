@@ -18,9 +18,8 @@ from gevent import socket
 # monkey.patch_socket()
 
 server = None
-google_ip = '64.233.162.83'
 cdn_list = {}
-google = {}
+# google = {}
 ad = {}
 cache = {}
 listen_addr = ()
@@ -39,12 +38,16 @@ def inlist(name, dict_):
 		return False
 
 
-def get_data(data,cdn=0):
+def get_data(data,dns_addr=()):
+	'''get data by udp'''
 	# data = pack('>H', len(data)) + data
 	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 	# s.settimeout(2)
-	s.sendto(data, dns_cn_addr)
+	if dns_addr:
+		s.sendto(data, dns_addr)
+	else:
+		s.sendto(data, dns_cn_addr)
 	data = s.recv(512)
 	return data
 	# s.connect(('114.114.114.114', 53))
@@ -54,31 +57,26 @@ def get_data(data,cdn=0):
 
 
 def get_data_by_tcp(data):
-	# print('get_data_by_tcp')
-	data = pack('>H', len(data)) + data
-	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	# s = geventsocks.socksocket()
-	s = socket.socket()
-	geventsocks.connect(s, dns_foreign_addr)
-	s.send(data)
-	# res = b''
-	# for buf in iter(lambda:s.recv(1024),b''):
-	# 	print('buf: ', buf)
-	res = s.recv(512)
-	length = unpack('>H', res[:2])[0]
-	# print(length)
-	if length <= len(res) - 2:
-		pass
-	else:
-		while len(res) - 2 < length:
-			res += s.recv(512)
-	s.close()
-	# print('get_data_by_tcp over')
-	return res[2:]
+	'''get data by another dns server'''
+	return get_data(data, ('115.159.158.38', 53))
+
+	# data = pack('>H', len(data)) + data
+	# s = socket.socket()
+	# geventsocks.connect(s, dns_foreign_addr)
+	# s.send(data)
+	# res = s.recv(512)
+	# length = unpack('>H', res[:2])[0]
+	# if length <= len(res) - 2:
+	# 	pass
+	# else:
+	# 	while len(res) - 2 < length:
+	# 		res += s.recv(512)
+	# s.close()
+	# return res[2:]
 
 
 def make_data(data, ip):
-	#data即请求包
+	#data is request
 	(id, flags, quests,
 	 answers, author, addition) = unpack('>HHHHHH', data[0:12])
 	flags_new   = 33152
@@ -146,7 +144,7 @@ def eva(data, client):
 			  '[cache]', name, ip)
 		server.sendto(make_data(data, ip), client)
 		if inlist(name, cdn_list):
-			res = get_data(data,cdn=1)
+			res = get_data(data)
 			ip_new = get_ip_from_resp(res, len(data), ip)
 		else:
 			resp = get_data_by_tcp(data)
@@ -161,19 +159,19 @@ def eva(data, client):
 			   '[ad]', name, ip)
 		server.sendto(make_data(data, ip), client)
 
-	elif inlist(name, google):
-		ip = google_ip
-		print( client[0],
-			   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-			   '[google]', name, ip)
-		server.sendto(make_data(data, ip), client)
+	# elif inlist(name, google):
+	# 	ip = google_ip
+	# 	print( client[0],
+	# 		   '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
+	# 		   '[google]', name, ip)
+	# 	server.sendto(make_data(data, ip), client)
 
 	elif inlist(name, cdn_list):
 		print(client[0],
 			  '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
 			  '[cdn]', name,)
 		# try:
-		res = get_data(data,cdn=1)
+		res = get_data(data)
 		# except socket.timeout as e:
 		# 	print(e)
 		# 	return
@@ -193,12 +191,12 @@ def eva(data, client):
 
 
 def main():
-	global server, google_ip, cache, cdn_list, google, ad
+	global server, cache, cdn_list, ad
 	global dns_cn_addr, dns_foreign_addr
 
 	cdn_list = { x:True for x in open('bjdns/cdnlist.txt','r').read().split('\n') if x}
 
-	google = { x:True for x in open('bjdns/google.txt','r').read().split('\n') if x}
+	# google = { x:True for x in open('bjdns/google.txt','r').read().split('\n') if x}
 	ad = { x:True for x in open('bjdns/ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
 
 	if len(sys.argv) >= 2:
