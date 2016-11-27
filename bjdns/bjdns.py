@@ -106,7 +106,7 @@ def make_data(data, ip):
 
 
 def get_ip_from_resp(res, data_len, ip='127.0.0.1'):
-	res = res[data_len:]
+	# res = res[data_len:]
 	p = re.compile(b'\xc0.\x00\x01\x00\x01')
 	try:
 		res = p.split(res)[1]
