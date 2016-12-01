@@ -9,7 +9,7 @@ import sys
 import os
 import time
 # import socks
-from bjdns import geventsocks
+import geventsocks
 import json
 from gevent.server import DatagramServer
 import re
@@ -58,21 +58,21 @@ def get_data(data,dns_addr=()):
 
 def get_data_by_tcp(data):
 	'''get data by another dns server'''
-	return get_data(data, ('115.159.158.38', 53))
+	# return get_data(data, ('115.159.158.38', 53))
 
-	# data = pack('>H', len(data)) + data
-	# s = socket.socket()
-	# geventsocks.connect(s, dns_foreign_addr)
-	# s.send(data)
-	# res = s.recv(512)
-	# length = unpack('>H', res[:2])[0]
-	# if length <= len(res) - 2:
-	# 	pass
-	# else:
-	# 	while len(res) - 2 < length:
-	# 		res += s.recv(512)
-	# s.close()
-	# return res[2:]
+	data = pack('>H', len(data)) + data
+	s = socket.socket()
+	geventsocks.connect(s, dns_foreign_addr)
+	s.send(data)
+	res = s.recv(512)
+	length = unpack('>H', res[:2])[0]
+	if length <= len(res) - 2:
+		pass
+	else:
+		while len(res) - 2 < length:
+			res += s.recv(512)
+	s.close()
+	return res[2:]
 
 
 def make_data(data, ip):
@@ -194,15 +194,15 @@ def main():
 	global server, cache, cdn_list, ad
 	global dns_cn_addr, dns_foreign_addr
 
-	cdn_list = { x:True for x in open('bjdns/cdnlist.txt','r').read().split('\n') if x}
+	cdn_list = { x:True for x in open('cdnlist.txt','r').read().split('\n') if x}
 
 	# google = { x:True for x in open('bjdns/google.txt','r').read().split('\n') if x}
-	ad = { x:True for x in open('bjdns/ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
+	ad = { x:True for x in open('ad.txt','r').read().split('\n') if x} if os.path.isfile('ad.txt') else {}
 
 	if len(sys.argv) >= 2:
 		json_dir = sys.argv[1]
 	else:
-		json_dir = 'bjdns/bjdns.json'
+		json_dir = 'bjdns.json'
 	json_str = open(json_dir).read()
 	json_dict = json.loads(json_str)
 	ss_ip, ss_port = json_dict['socks5_server'].split(':')

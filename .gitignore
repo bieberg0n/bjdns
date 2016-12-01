@@ -72,3 +72,4 @@ test.py
 ad/
 test1.py
 test.sh
+*.bak

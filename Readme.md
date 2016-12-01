@@ -39,18 +39,17 @@ p.s. 打包版已内置以上依赖。
 ###Usage
 ####Linux/OS X:
 1 安装Python3.  
-2 安装bjdns:
+2 clone bjdns:
 ```
 git clone https://github.com/bieberg0n/bjdns.git  
 cd bjdns  
-sudo python3 setup.py install
 
 ```
 
 3 确保本地（或别的地方）的 shadowsocks 客户端已开启，确认 bjdns/bjdns.json 中填写正确  
 4 修改本机 DNS 为 127.0.0.1 ，然后在终端输入  
 ```
-sudo bjdns ./bjdns/bjdns.json  
+sudo python3 bjdns.py bjdns.json  
 
 ```
 
