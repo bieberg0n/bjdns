@@ -11,17 +11,6 @@ import time
 # import geventsocks
 import json
 import re
-# from gevent import monkey
-# monkey.patch_socket()
-
-# server = None
-cdn_list = {}
-# google = {}
-ad = {}
-# cache = {}
-listen_addr = ()
-dns_cn_addr = ()
-dns_foreign_addr = ()
 
 def inlist(name, dict_):
 	name = name.split('.')
@@ -35,34 +24,34 @@ def inlist(name, dict_):
 		return False
 
 
-def get_data(data,dns_addr=()):
+def get_data(data, dns_addr=(), foreign=False):
 	'''get data by udp'''
-	# data = pack('>H', len(data)) + data
-	# s    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	s.settimeout(0.01)
+	if foreign:
+		s.settimeout(0.5)
+	else:
+		pass
 	if dns_addr:
 		s.sendto(data, dns_addr)
 	else:
 		s.sendto(data, dns_cn_addr)
 	data = s.recv(512)
 	return data
-	# s.connect(('114.114.114.114', 53))
-	# s.send(data)
-	# res  = s.recv(512)
-	# return res[2:]
 
 
 def get_data_by_tcp(data):
 	'''get data by another dns server'''
 	try:
-		resp = get_data(data, ('115.159.158.38', 53))
+		resp = get_data(data, ('115.159.158.38', 53), foreign=True)
 		return resp
-	# return get_data(data, ('115.159.158.38', 53))
 	except socket.timeout:
 		data = pack('>H', len(data)) + data
-		s = socket.socket()
-		geventsocks.connect(s, dns_foreign_addr)
+		if config['mode'] == 'gevent':
+			s = socket.socket()
+			geventsocks.connect(s, dns_foreign_addr)
+		else:
+			s = socks.socksocket()
+			s.connect(dns_foreign_addr)
 		s.send(data)
 		res = s.recv(512)
 		length = unpack('>H', res[:2])[0]
@@ -189,22 +178,25 @@ def eva(data, client):
 		cache[name] = ip
 
 
-def serv_start(handle, config):
+def serv_start(handle):
 	global socket, server, cache
 	mode = config['mode']
 	if mode == 'gevent':
-		global socks
+		global geventsocks
 		from gevent.server import DatagramServer
 		from gevent import socket
-		import socks
-		server = DatagramServer(listen_addr, handle)
+		import geventsocks
+		geventsocks.set_default_proxy(config['socks5_ip'], config['socks5_port'])
+		server = DatagramServer((config['listen_ip'], config['listen_port']), handle)
 		cache = {}
 		return server.serve_forever()
 
 	elif mode == 'multiprocessing':
-		global multiprocessing
+		global socks
 		import socket
 		import multiprocessing
+		import socks
+		socks.set_default_proxy(socks.SOCKS5, config['socks5_ip'], config['socks5_port'])
 		server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		server.bind((config['listen_ip'], config['listen_port']))
@@ -212,11 +204,12 @@ def serv_start(handle, config):
 		pool = multiprocessing.Pool(config['the_num_of_processes'])
 		while True:
 			data, cli_addr = server.recvfrom(512)
-			pool.apply_async(handle, args=(data, cli_addr,))
+			pool.apply_async(handle, args=(data, cli_addr,config,))
+			# multiprocessing.Process(target=handle, args=(data, cli_addr,config,)).start()
 		
 
 def main():
-	global cdn_list, ad
+	global cdn_list, ad, config
 	global dns_cn_addr, dns_foreign_addr
 
 	cdn_list = { x:True for x in open('cdnlist.txt','r').read().split('\n') if x}
@@ -230,15 +223,15 @@ def main():
 		json_dir = 'bjdns.json'
 	json_str = open(json_dir).read()
 	json_dict = json.loads(json_str)
-	ss_ip, ss_port = json_dict['socks5_server'].split(':')
+	config = json_dict
+	# ss_ip, ss_port = json_dict['socks5_server'].split(':')
 	listen_addr = (json_dict['listen_ip'], json_dict['listen_port'])
 	dns_cn_addr = (json_dict['dns_cn_ip'], json_dict['dns_cn_port'])
 	dns_foreign_addr = (json_dict['dns_foreign_ip'], json_dict['dns_foreign_port'])
-	# geventsocks.set_default_proxy(ss_ip, int(ss_port))
 
-	mode = json_dict['mode']
+	# mode = json_dict['mode']
 	if os.name != 'nt':
-		serv_start(eva, json_dict)
+		serv_start(eva)
 		# adem()
 		# exit()
 
