@@ -1,5 +1,5 @@
 {
-	"socks5_server":"127.0.0.1:1080",
+	"socks5_server":"192.168.2.152:1081",
 
 	"listen_ip":"0.0.0.0",
 	"listen_port":53,
@@ -8,5 +8,8 @@
 	"dns_cn_port":53,
 
 	"dns_foreign_ip":"8.8.8.8",
-	"dns_foreign_port":53
+	"dns_foreign_port":53,
+
+    "mode":"multiprocessing",
+    "the_num_of_processes":2
 }
