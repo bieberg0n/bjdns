@@ -204,8 +204,8 @@ def serv_start(handle):
 		pool = multiprocessing.Pool(config['the_num_of_processes'])
 		while True:
 			data, cli_addr = server.recvfrom(512)
-			pool.apply_async(handle, args=(data, cli_addr,config,))
-			# multiprocessing.Process(target=handle, args=(data, cli_addr,config,)).start()
+			pool.apply_async(handle, args=(data, cli_addr,))
+			# multiprocessing.Process(target=handle, args=(data, cli_addr,)).start()
 		
 
 def main():
