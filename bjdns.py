@@ -24,10 +24,10 @@ def inlist(name, dict_):
 		return False
 
 
-def get_data(data, dns_addr=(), foreign=False):
+def get_data(data, dns_addr=(), timeout=False):
 	'''get data by udp'''
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	if foreign:
+	if timeout:
 		s.settimeout(0.5)
 	else:
 		pass

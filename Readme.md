@@ -19,6 +19,14 @@
 ---
 
 ###Feature
+* 2016-12-24  
+可以将并发模式切换成异步或多进程，在 bjdns.json 中设置
+```
+"mode":"gevent" or "multiprocessing"
+"the_num_of_processes":16		#only work by multiprocessing
+```
+
+
 * 2016-10-19  
 从本次更新开始 bjdns 需要配合 shadowsocks 或其他 socks5 代理使用。  
 在 bjdns.json 中填写 shadowsocks 客户端监听的 ip 地址（不要填域名）与端口，默认为 127.0.0.1:1080 。
@@ -38,7 +46,12 @@ p.s. 打包版已内置以上依赖。
 
 ###Usage
 ####Linux/OS X:
-1 安装Python3.  
+1 Install Python3 and pip;  
+2 Install gevent:
+```
+sudo pip3 install gevent
+```
+
 2 clone bjdns:
 ```
 git clone https://github.com/bieberg0n/bjdns.git  
