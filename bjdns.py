@@ -24,10 +24,10 @@ def inlist(name, dict_):
 		return False
 
 
-def get_data(data, dns_addr=(), foreign=False):
+def get_data(data, dns_addr=(), timeout=False):
 	'''get data by udp'''
 	s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-	if foreign:
+	if timeout:
 		s.settimeout(0.5)
 	else:
 		pass
@@ -42,7 +42,7 @@ def get_data(data, dns_addr=(), foreign=False):
 def get_data_by_tcp(data):
 	'''get data by another dns server'''
 	try:
-		resp = get_data(data, ('115.159.158.38', 53), foreign=True)
+		resp = get_data(data, ('115.159.158.38', 53), timeout=True)
 		return resp
 	except socket.timeout:
 		data = pack('>H', len(data)) + data
