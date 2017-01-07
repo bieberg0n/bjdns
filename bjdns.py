@@ -28,16 +28,16 @@ def inlist(name, dict_):
 def get_data(data, dns_addr=(), timeout=False):
     '''get data by udp'''
     # s    = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-    # if timeout:
-    #     s.settimeout(0.5)
-    # else:
-    #     pass
     # if dns_addr:
     #     s.sendto(data, dns_addr)
     # else:
     #     s.sendto(data, dns_cn_addr)
     # data = s.recv(512)
     s = socket.socket()
+    if timeout:
+        s.settimeout(0.5)
+    else:
+        pass
     if dns_addr:
         s.connect(dns_addr)
     else:
