@@ -29,7 +29,8 @@
 
 * 2016-10-19  
 从本次更新开始 bjdns 需要配合 shadowsocks 或其他 socks5 代理使用。  
-在 bjdns.json 中填写 shadowsocks 客户端监听的 ip 地址（不要填域名）与端口，默认为 127.0.0.1:1080 。
+在 shadowsocks 客户端的 server 设置中应填写 IP，不能为域名。  
+在 bjdns.json 中填写 shadowsocks 客户端监听的 ip 地址（也不要填域名）与端口，默认为 127.0.0.1:1080 。
 
 * 2016-04-29  
 加入过滤广告功能,如果不需要这个功能可自行删除 ad.txt .  
