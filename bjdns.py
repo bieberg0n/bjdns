@@ -52,7 +52,7 @@ def get_data(data, dns_addr=(), timeout=False):
 def get_foreign_data(data):
     '''get data by another dns server'''
     try:
-        resp = get_data(data, ('115.159.158.38', 53), timeout=True)
+        resp = get_data(data, ('123.207.137.88', 53), timeout=True)
         return resp
     except socket.timeout:
         data = pack('>H', len(data)) + data
