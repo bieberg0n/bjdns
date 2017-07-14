@@ -9674,7 +9674,6 @@
 .rsense-ad.realclick.co.kr
 .rs.mail.ru
 .rss.buysellads.com
-.rs.sinajs.cn
 .rt2.infolinks.com
 .rt3.infolinks.com
 .rta.dailymail.co.uk
@@ -10120,7 +10119,6 @@
 .si.hit.gemius.pl
 .siliconera.us.intellitxt.com
 .simba.6.cn
-.simg.sinajs.cn
 .simg.zedo.com
 .simpleads.net
 .simpli.fi

@@ -240,6 +240,8 @@ def main():
     dns_foreign_addr = (json_dict['dns_foreign_ip'], json_dict['dns_foreign_port'])
 
     # mode = json_dict['mode']
+    serv_start(eva)
+    exit()
     if os.name != 'nt':
         serv_start(eva)
         # adem()
