@@ -57,7 +57,7 @@ cd bjdns
 
 ```
 
-3 确保本地（或别的地方）的 shadowsocks 客户端已开启，确认 bjdns/bjdns.json 中填写正确  
+3 确保本地（或别的地方）的 shadowsocks 客户端已开启，确认 bjdns/bjdns.json 中填写正确; 如果 Shadowsocks 的远程服务器是域名, 请将该域名填进 whitelist.txt 里;  
 4 修改本机 DNS 为 127.0.0.1 ，然后在终端输入  
 ```
 sudo python3 bjdns.py bjdns.json  

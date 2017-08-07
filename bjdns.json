@@ -1,15 +1,15 @@
 {
-	  "socks5_ip":"127.0.0.1",
+    "socks5_ip":"127.0.0.1",
     "socks5_port":1080,
 
-	  "listen_ip":"0.0.0.0",
-	  "listen_port":53,
+    "listen_ip":"0.0.0.0",
+    "listen_port":53,
 
-	  "dns_cn_ip":"119.29.29.29",
-	  "dns_cn_port":53,
+    "dns_cn_ip":"114.114.114.114",
+    "dns_cn_port":53,
 
-	  "dns_foreign_ip":"8.8.4.4",
-	  "dns_foreign_port":53,
+    "dns_foreign_ip":"8.8.4.4",
+    "dns_foreign_port":53,
 
     "mode":"gevent",
     "the_num_of_processes":16
