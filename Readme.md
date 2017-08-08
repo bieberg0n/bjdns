@@ -1,6 +1,7 @@
 # bjdns
 
 一个简单的带缓存的 DNS 服务器，用于防止 DNS 污染。  
+已在阿里云架设了此项目(121.42.185.92)  
 
 ---
 
@@ -16,12 +17,8 @@
 ---
 
 ### Feature
-* 2016-12-24  
-可以将并发模式切换成异步或多进程，在 bjdns.json 中设置
-```
-"mode":"gevent" or "multiprocessing"
-"the_num_of_processes":16		# only work by multiprocessing
-```
+* 2017-08-08  
+可以通过HTTPDNS来获得更精确的IP.  
 
 
 * 2016-10-19  
@@ -45,9 +42,9 @@ p.s. 打包版已内置以上依赖。
 ### Usage  
 #### Linux/OS X:  
 1 Install Python3 and pip;  
-2 Install gevent:
+2 Install gevent and requests:
 ```
-sudo pip3 install gevent
+sudo pip3 install -U gevent requests
 ```
 
 2 clone bjdns:
@@ -64,7 +61,7 @@ sudo python3 bjdns.py bjdns.json
 
 ```
 
-#### Windows:  
+#### Windows(多年未更新):  
 1 下载打包版[点我](https://github.com/bieberg0n/bjdns/releases)  
 2 确保本地（或别的地方）的 shadowsocks 客户端已开启，确认 bjdns.json 中填写正确  
 3 在网络连接的本地连接(或者无线网络)-属性-IPv4里，将首选 DNS 服务器改为 127.0.0.1  

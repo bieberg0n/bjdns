@@ -3,14 +3,21 @@
 
 # copyright 2016 bjong
 
-from struct import pack, unpack
 import sys
 import os
 import time
-# import socks
-# import geventsocks
 import json
 import re
+import struct
+from struct import pack, unpack
+from gevent.server import DatagramServer
+from gevent import socket, monkey
+import geventsocks
+monkey.patch_all()
+import requests
+
+
+s = requests.session()
 
 
 def inlist(name, dict_):
@@ -25,16 +32,48 @@ def inlist(name, dict_):
         return False
 
 
+def is_private_ip(ip):
+    if ip.startswith('127'):
+        return True
+    else:
+        ip1 = 167772160
+        ip2 = 2886729728
+        ip3 = 3232235520
+        binaryIp = socket.inet_aton(ip)
+        numIp = struct.unpack('!L', binaryIp)[0]
+        mark = 2**32-1
+        ag = (mark<<16) & numIp
+        if ip3 ==ag:
+            return True
+        ag = mark<<20 & numIp
+        if ip2 == ag:
+            return True
+        ag = (mark<<24) & numIp
+        if ip1 == ag:
+            return True
+        return False
+
+
+def get_dns_by_http(domain_name, client_ip):
+    if is_private_ip(client_ip):
+        r = s.get('http://119.29.29.29/d?dn={}&ip={}'.format(domain_name, ''))
+    else:
+        r = s.get('http://119.29.29.29/d?dn={}&ip={}'.format(domain_name, client_ip))
+    # print(r.text)
+    ip = r.text.split(';')[0]
+    return (ip)
+
+
 def get_dns_by_tcp(query_data, dns_server, by_socks=False):
     data = pack('>H', len(query_data)) + query_data
 
     if by_socks:
-        if config['mode'] == 'gevent':
-            s = socket.socket()
-            geventsocks.connect(s, dns_server)
-        else:
-            s = socks.socksocket()
-            s.connect(dns_server)
+        # if config['mode'] == 'gevent':
+        s = socket.socket()
+        geventsocks.connect(s, dns_server)
+        # else:
+        #     s = socks.socksocket()
+        #     s.connect(dns_server)
     else:
         s = socket.socket()
         s.connect(dns_server)
@@ -51,6 +90,15 @@ def get_dns_by_tcp(query_data, dns_server, by_socks=False):
     return res[2:]
 
 
+def get_dns(domain_name, query_data, client_ip, dns_server, by_socks=False, by_httpdns=False):
+    if by_socks or not by_httpdns:
+        resp = get_dns_by_tcp(query_data, dns_server, by_socks)
+        ip = get_ip_from_resp(resp, len(query_data))
+        return (resp, ip)
+    else:
+        ip = get_dns_by_http(domain_name, client_ip)
+        return (make_data(query_data, ip), ip)
+    # else:
 # def get_data(data, dns_addr=()):
 #     '''get data by udp'''
 #     s = socket.socket()
@@ -126,14 +174,9 @@ def make_data(data, ip):
 
 def get_ip_from_resp(res, data_len, ip='127.0.0.1'):
     p = re.compile(b'\xc0.\x00\x01\x00\x01')
-    # try:
     res = p.split(res)[1]
     ip_bytes   = unpack('BBBB',res[6:10])
     ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
-    # except IndexError:
-    #     raise Exception('get ip fail')
-    #     return
-        # ip = ip
     return ip
 
 
@@ -146,22 +189,25 @@ def eva(data, client):
     type = unpack('>H',data[14+len(name):16+len(name)])
     type = type[0]
     if not type:
-        resp = get_dns_by_tcp(data, dns_cn_addr)
+        resp, ip = get_dns(name, data, client[0], dns_cn_addr, by_socks=False, by_httpdns=config['by_httpdns'])
         server.sendto(resp, client)
         return
 
-    if name in cache:
+    elif name in cache:
         ip = cache[name]
         print(client[0],
               '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
               '[cache]', name, ip)
         server.sendto(make_data(data, ip), client)
         if inlist(name, white_list):
-            res = get_dns_by_tcp(data, dns_cn_addr)
-            ip_new = get_ip_from_resp(res, len(data), ip)
+            # resp, ip_new = get_dns(name, data, client[0], dns_cn_addr, by_socks=False, by_httpdns=config['by_httpdns'])
+            pass
+            # res = get_dns_by_tcp(data, dns_cn_addr)
+            # ip_new = get_ip_from_resp(res, len(data), ip)
         else:
-            resp = get_dns_by_tcp(data, dns_foreign_addr, by_socks=True)
-            ip_new = get_ip_from_resp(resp, len(data), ip)
+            # resp = get_dns_by_tcp(data, dns_foreign_addr, by_socks=True)
+            # ip_new = get_ip_from_resp(resp, len(data), ip)
+            resp, ip_new = get_dns(name, data, client[0], dns_foreign_addr, by_socks=True)
         if ip != ip_new:
             cache[name] = ip_new
 
@@ -173,17 +219,19 @@ def eva(data, client):
         server.sendto(make_data(data, ip), client)
 
     elif inlist(name, white_list):
+        resp, ip = get_dns(name, data, client[0], dns_cn_addr, by_socks=False, by_httpdns=config['by_httpdns'])
         print(client[0],
               '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
-              '[cdn]', name,)
-        res = get_dns_by_tcp(data, dns_cn_addr)
-        server.sendto(res, client)
-        ip = get_ip_from_resp(res, len(data))
-        cache[name] = ip
+              '[cdn]', name, ip)
+        # res = get_dns_by_tcp(data, dns_cn_addr)
+        server.sendto(resp, client)
+        # ip = get_ip_from_resp(res, len(data))
+        # cache[name] = ip
 
     else:
-        resp = get_dns_by_tcp(data, dns_foreign_addr, by_socks=True)
-        ip = get_ip_from_resp(resp, len(data))
+        # resp = get_dns_by_tcp(data, dns_foreign_addr, by_socks=True)
+        resp, ip = get_dns(name, data, client[0], dns_foreign_addr, by_socks=True)
+        # ip = get_ip_from_resp(resp, len(data))
         server.sendto(make_data(data,ip), client)
         print(client[0],
               '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
@@ -193,32 +241,28 @@ def eva(data, client):
 
 def serv_start(handle):
     global socket, server, cache
-    mode = config['mode']
-    if mode == 'gevent':
-        global geventsocks
-        from gevent.server import DatagramServer
-        from gevent import socket
-        import geventsocks
-        geventsocks.set_default_proxy(config['socks5_ip'], config['socks5_port'])
-        server = DatagramServer((config['listen_ip'], config['listen_port']), handle)
-        cache = {}
-        return server.serve_forever()
+    # mode = config['mode']
+    # if mode == 'gevent':
+    # global geventsocks
+    geventsocks.set_default_proxy(config['socks5_ip'], config['socks5_port'])
+    server = DatagramServer((config['listen_ip'], config['listen_port']), handle)
+    cache = {}
+    return server.serve_forever()
 
-    elif mode == 'multiprocessing':
-        global socks
-        import socket
-        import multiprocessing
-        import socks
-        socks.set_default_proxy(socks.SOCKS5, config['socks5_ip'], config['socks5_port'])
-        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind((config['listen_ip'], config['listen_port']))
-        cache = multiprocessing.Manager().dict()
-        pool = multiprocessing.Pool(config['the_num_of_processes'])
-        while True:
-            data, cli_addr = server.recvfrom(512)
-            pool.apply_async(handle, args=(data, cli_addr,))
-            # multiprocessing.Process(target=handle, args=(data, cli_addr,)).start()
+    # elif mode == 'multiprocessing':
+    #     global socks
+    #     import socket
+    #     import multiprocessing
+    #     import socks
+    #     socks.set_default_proxy(socks.SOCKS5, config['socks5_ip'], config['socks5_port'])
+    #     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #     server.bind((config['listen_ip'], config['listen_port']))
+    #     cache = multiprocessing.Manager().dict()
+    #     pool = multiprocessing.Pool(config['the_num_of_processes'])
+    #     while True:
+    #         data, cli_addr = server.recvfrom(512)
+    #         pool.apply_async(handle, args=(data, cli_addr,))
 
 
 def main():
