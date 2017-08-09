@@ -253,7 +253,10 @@ def eva(data, client):
         print(client[0],
               '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
               name, ip)
-        cache[name] = ip
+        if ip:
+            cache[name] = ip
+        else:
+            pass
 
 
 def serv_start(handle):
