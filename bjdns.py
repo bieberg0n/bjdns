@@ -59,7 +59,6 @@ def get_dns_by_http(domain_name, client_ip):
         r = s.get('http://119.29.29.29/d?dn={}&ip={}'.format(domain_name, ''))
     else:
         r = s.get('http://119.29.29.29/d?dn={}&ip={}'.format(domain_name, client_ip))
-    # print(r.text)
     ip = r.text.split(';')[0]
     if ip:
         return (ip)
@@ -107,7 +106,12 @@ def get_dns(domain_name, query_data, client_ip, dns_server, by_socks=False, by_h
         return (resp, ip)
     else:
         ip = get_dns_by_http(domain_name, client_ip)
-        return (make_data(query_data, ip), ip)
+        if ip:
+            resp = make_data(query_data, ip)
+        else:
+            resp = b''
+
+    return (resp, ip)
     # else:
 # def get_data(data, dns_addr=()):
 #     '''get data by udp'''
@@ -175,24 +179,24 @@ def make_data(data, ip):
                       dns_answer['datalength'])
 
     ip          = ip.split('.')
-    # print(ip)
+    # try:
     ip_bytes    = pack('BBBB', int(ip[0]), int(ip[1]),
-                    int(ip[2]), int(ip[3]))
-    res        += ip_bytes
+                       int(ip[2]), int(ip[3]))
+    # except ValueError as e:
+    #     print(e, cache)
 
+    res        += ip_bytes
     return res
 
 
 def get_ip_from_resp(res, data_len):
     ip=''
     p = re.compile(b'\xc0.\x00\x01\x00\x01')
-    # print(res)
     try:
         res = p.split(res)[1]
         ip_bytes   = unpack('BBBB',res[6:10])
         ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
     except IndexError as e:
-        # print(e, res)
         pass
     return ip
 
@@ -205,29 +209,25 @@ def eva(data, client):
 
     type = unpack('>H',data[14+len(name):16+len(name)])
     type = type[0]
+
+    # 非A类请求
     if not type:
         resp, ip = get_dns(name, data, client[0], dns_cn_addr, by_socks=False, by_httpdns=config['by_httpdns'])
         server.sendto(resp, client)
         return
 
+    # 命中缓存
     elif name in cache:
         ip = cache[name]
         print(client[0],
               '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
               '[cache]', name, ip)
         server.sendto(make_data(data, ip), client)
-        if inlist(name, white_list):
-            # resp, ip_new = get_dns(name, data, client[0], dns_cn_addr, by_socks=False, by_httpdns=config['by_httpdns'])
-            pass
-            # res = get_dns_by_tcp(data, dns_cn_addr)
-            # ip_new = get_ip_from_resp(res, len(data), ip)
-        else:
-            # resp = get_dns_by_tcp(data, dns_foreign_addr, by_socks=True)
-            # ip_new = get_ip_from_resp(resp, len(data), ip)
-            resp, ip_new = get_dns(name, data, client[0], dns_foreign_addr, by_socks=True)
-        if ip != ip_new:
+        resp, ip_new = get_dns(name, data, client[0], dns_foreign_addr, by_socks=True)
+        if ip_new and ip_new != ip:
             cache[name] = ip_new
 
+    # 广告
     elif inlist(name, ad):
         ip = '127.0.0.1'
         print( client[0],
@@ -235,6 +235,7 @@ def eva(data, client):
                '[ad]', name, ip)
         server.sendto(make_data(data, ip), client)
 
+    # 国内网站
     elif inlist(name, white_list):
         resp, ip = get_dns(name, data, client[0], dns_cn_addr, by_socks=False, by_httpdns=config['by_httpdns'])
         print(client[0],
@@ -245,15 +246,17 @@ def eva(data, client):
         # ip = get_ip_from_resp(res, len(data))
         # cache[name] = ip
 
+    # 国外网站
     else:
-        # resp = get_dns_by_tcp(data, dns_foreign_addr, by_socks=True)
         resp, ip = get_dns(name, data, client[0], dns_foreign_addr, by_socks=True)
-        # ip = get_ip_from_resp(resp, len(data))
         server.sendto(resp, client)
         print(client[0],
               '[{}]'.format(time.strftime('%Y-%m-%d %H:%M:%S')),
               name, ip)
-        cache[name] = ip
+        if ip:
+            cache[name] = ip
+        else:
+            pass
 
 
 def serv_start(handle):
