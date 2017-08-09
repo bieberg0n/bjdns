@@ -59,7 +59,6 @@ def get_dns_by_http(domain_name, client_ip):
         r = s.get('http://119.29.29.29/d?dn={}&ip={}'.format(domain_name, ''))
     else:
         r = s.get('http://119.29.29.29/d?dn={}&ip={}'.format(domain_name, client_ip))
-    # print(r.text)
     ip = r.text.split(';')[0]
     if ip:
         return (ip)
@@ -180,12 +179,11 @@ def make_data(data, ip):
                       dns_answer['datalength'])
 
     ip          = ip.split('.')
-    # print(ip)
-    try:
-        ip_bytes    = pack('BBBB', int(ip[0]), int(ip[1]),
-                           int(ip[2]), int(ip[3]))
-    except ValueError as e:
-        print(cache)
+    # try:
+    ip_bytes    = pack('BBBB', int(ip[0]), int(ip[1]),
+                       int(ip[2]), int(ip[3]))
+    # except ValueError as e:
+    #     print(e, cache)
 
     res        += ip_bytes
     return res
@@ -194,13 +192,11 @@ def make_data(data, ip):
 def get_ip_from_resp(res, data_len):
     ip=''
     p = re.compile(b'\xc0.\x00\x01\x00\x01')
-    # print(res)
     try:
         res = p.split(res)[1]
         ip_bytes   = unpack('BBBB',res[6:10])
         ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
     except IndexError as e:
-        # print(e, res)
         pass
     return ip
 
@@ -259,7 +255,6 @@ def eva(data, client):
               name, ip)
         if ip:
             cache[name] = ip
-            print(cache, ip)
         else:
             pass
 
