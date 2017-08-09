@@ -61,7 +61,10 @@ def get_dns_by_http(domain_name, client_ip):
         r = s.get('http://119.29.29.29/d?dn={}&ip={}'.format(domain_name, client_ip))
     # print(r.text)
     ip = r.text.split(';')[0]
-    return (ip)
+    if ip:
+        return (ip)
+    else:
+        return '127.0.0.1'
 
 
 def get_dns_by_tcp(query_data, dns_server, by_socks=False):
@@ -79,15 +82,21 @@ def get_dns_by_tcp(query_data, dns_server, by_socks=False):
         s.connect(dns_server)
 
     s.send(data)
+    # res = b''
+    # while len(res) <= 2:
     res = s.recv(512)
-    length = unpack('>H', res[:2])[0]
-    if length <= len(res) - 2:
-        pass
+    if len(res) <= 2:
+        s.close()
+        return make_data(query_data, '127.0.0.1')
     else:
-        while len(res) - 2 < length:
-            res += s.recv(512)
-    s.close()
-    return res[2:]
+        # length = unpack('>H', res[:2])[0]
+        # if length <= len(res) - 2:
+        #     pass
+        # else:
+        #     while len(res) - 2 < length:
+                # res += s.recv(512)
+        s.close()
+        return res[2:]
 
 
 def get_dns(domain_name, query_data, client_ip, dns_server, by_socks=False, by_httpdns=False):
@@ -165,6 +174,7 @@ def make_data(data, ip):
                       dns_answer['datalength'])
 
     ip          = ip.split('.')
+    # print(ip)
     ip_bytes    = pack('BBBB', int(ip[0]), int(ip[1]),
                     int(ip[2]), int(ip[3]))
     res        += ip_bytes
@@ -172,11 +182,17 @@ def make_data(data, ip):
     return res
 
 
-def get_ip_from_resp(res, data_len, ip='127.0.0.1'):
+def get_ip_from_resp(res, data_len):
+    ip='127.0.0.1'
     p = re.compile(b'\xc0.\x00\x01\x00\x01')
-    res = p.split(res)[1]
-    ip_bytes   = unpack('BBBB',res[6:10])
-    ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
+    # print(res)
+    try:
+        res = p.split(res)[1]
+        ip_bytes   = unpack('BBBB',res[6:10])
+        ip         =  '.'.join( [ str(i) for i in ip_bytes ] )
+    except IndexError as e:
+        # print(e, res)
+        pass
     return ip
 
 
