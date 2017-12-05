@@ -181,9 +181,9 @@ def query(req, host, client, pos):
     else:
         by_socks = True
         by_httpdns = False
-        dns_addr = dns_cn_addr
+        dns_addr = dns_foreign_addr
         cli_ip = 'default'
-    resp, ip, ttl = get_dns(req, host, client[0],
+    resp, ip, ttl = get_dns(req, host, cli_ip,
                             dns_addr, by_socks, by_httpdns)
     server.sendto(resp, client)
 
