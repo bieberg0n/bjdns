@@ -157,10 +157,13 @@ def get_ip_from_resp(res, data_len):
     return ip
 
 
-def write_cache(host, ip, ttl):
+def write_cache(cli_ip, host, ip, ttl):
     if ip:
         now = int(time.time())
-        cache[host] = dict(
+
+        if not cache.get(cli_ip):
+            cache[cli_ip] = dict()
+        cache[cli_ip][host] = dict(
             ip=ip,
             ttl=ttl,
             querytime=now,
@@ -174,16 +177,18 @@ def query(req, host, client, pos):
         by_socks = False
         by_httpdns = config['by_httpdns']
         dns_addr = dns_cn_addr
+        cli_ip = client[0]
     else:
         by_socks = True
         by_httpdns = False
         dns_addr = dns_cn_addr
-
+        cli_ip = 'default'
     resp, ip, ttl = get_dns(req, host, client[0],
                             dns_addr, by_socks, by_httpdns)
     server.sendto(resp, client)
-    write_cache(host, ip, ttl)
-    log(client, '[{}]'.format(pos), host, ip, ttl)
+
+    write_cache(cli_ip, host, ip, ttl)
+    log(client, '[{}]'.format(pos), host, ip, '({})'.format(ttl))
 
 
 def query_cn_website(req, host, client):
@@ -194,36 +199,50 @@ def query_foreign_website(req, host, client):
     query(req, host, client, 'foreign')
 
 
-def host_timeout(host):
-    query_time = cache[host]['querytime']
+def host_timeout(cli_ip, host):
+    query_time = cache[cli_ip][host]['querytime']
     now = int(time.time())
     return now - query_time
 
 
-def in_cache(host):
-    if host in cache:
-        ttl = cache[host]['ttl']
-        return host_timeout(host) <= ttl
+def in_cache(cli_ip, host):
+    if cli_ip in cache and host in cache[cli_ip]:
+        ttl = cache[cli_ip][host]['ttl']
+        return host_timeout(cli_ip, host) <= ttl
     else:
         return False
 
 
+def handle_in_cache(cli_ip, host, req, cli_addr):
+    ip, ttl = cache[cli_ip][host]['ip'], cache[cli_ip][host]['ttl']
+    current_ttl = ttl - host_timeout(cli_ip, host)
+    server.sendto(make_data(req, ip, current_ttl), cli_addr)
+    log(cli_addr, '[cache]', host, ip, '({})'.format(current_ttl))
+
+
 def handle_query(req, host, client):
     # ip = cache[name]
-    if in_cache(host):
-        ip, ttl = cache[host]['ip'], cache[host]['ttl']
-        current_ttl = ttl - host_timeout(host)
-        server.sendto(make_data(req, ip, current_ttl), client)
-        log(client, '[cache]', host, ip, current_ttl)
-
-    elif inlist(host, white_list):
-        query_cn_website(req, host, client)
+    if inlist(host, white_list):
+        if in_cache(client[0], host):
+            cli_ip = client[0]
+            handle_in_cache(cli_ip, host, req, client)
+        else:
+            query_cn_website(req, host, client)
 
     else:
-        query_foreign_website(req, host, client)
+        mode = 'default'
+        if in_cache(mode, host):
+            handle_in_cache('default', host, req, client)
+            # ip = cache['default'][host]['ip']
+            # ttl = cache['default'][host]['ttl']
+            # current_ttl = ttl - host_timeout('default', host)
+            # server.sendto(make_data(req, ip, current_ttl), client)
+            # log(client, '[cache]', host, ip, '({})'.format(current_ttl))
+        else:
+            query_foreign_website(req, host, client)
 
 
-def eva(data, client):
+def handle(data, client):
     list_iter = iter(data[13:])
     name = ''
     for bit in iter(lambda: next(list_iter), 0):
@@ -286,7 +305,7 @@ def bjdns():
     dns_foreign_addr = (config['dns_foreign_ip'],
                         config['dns_foreign_port'])
 
-    serv_start(eva)
+    serv_start(handle)
 
 
 if __name__ == '__main__':
