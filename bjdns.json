@@ -8,7 +8,7 @@
     "dns_cn_ip":"114.114.114.114",
     "dns_cn_port":53,
 
-    "dns_foreign_ip":"8.8.4.4",
+    "dns_foreign_ip":"9.9.9.9",
     "dns_foreign_port":53,
 
     "by_httpdns": true
