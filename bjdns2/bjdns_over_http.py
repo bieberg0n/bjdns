@@ -163,7 +163,7 @@ def index():
     host = request.args.get('dn')
     cli_ip = request.args.get('ip')
     if host:
-        cli_ip = cli_ip if cli_ip else ''
+        cli_ip = cli_ip if cli_ip else request.remote_addr
         resp = bjdns(host, cli_ip)
         return json.dumps(resp).encode()
     else:
