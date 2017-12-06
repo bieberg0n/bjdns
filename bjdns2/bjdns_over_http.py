@@ -22,7 +22,7 @@ app = Flask(__name__)
 
 
 def is_private_ip(ip):
-    if ip == '' or ip.startswith('127'):
+    if ip == '' or ip == '1' or ip.startswith('127'):
         return True
     else:
         ip1 = 167772160
@@ -163,7 +163,7 @@ def index():
     host = request.args.get('dn')
     cli_ip = request.args.get('ip')
     if host:
-        cli_ip = cli_ip if cli_ip else request.remote_addr
+        cli_ip = cli_ip if cli_ip else request.remote_addr.split(':')[-1]
         resp = bjdns(host, cli_ip)
         return json.dumps(resp).encode()
     else:
