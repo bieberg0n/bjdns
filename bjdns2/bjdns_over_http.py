@@ -141,7 +141,7 @@ def resp_from_cache(cli_ip, host):
     current_ttl = ttl - host_timeout(cli_ip, host)
     # server.sendto(make_data(req, ip, current_ttl), cli_addr)
     log(cli_ip, '[cache]', host, ip, '({})'.format(current_ttl))
-    return make_resp(ip, ttl)
+    return make_resp(ip, current_ttl)
 
 
 def bjdns(host, cli_ip):
@@ -154,21 +154,20 @@ def bjdns(host, cli_ip):
         ip, ttl = query(host, cli_ip)
         write_cache(cli_ip, host, ip, ttl)
         # log(cache)
+        log(cli_ip, host, ip, '({})'.format(ttl))
         return make_resp(ip, ttl)
 
 
 @app.route('/', methods=['GET'])
 def index():
-    t = time.time()
     host = request.args.get('dn')
     cli_ip = request.args.get('ip')
     if host:
         cli_ip = cli_ip if cli_ip else ''
         resp = bjdns(host, cli_ip)
-        log(time.time() - t)
         return json.dumps(resp).encode()
     else:
-        return
+        return 'BJDNS'
 
 
 if __name__ == '__main__':
