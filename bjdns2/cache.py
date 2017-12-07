@@ -25,12 +25,14 @@ class Cache():
     def select(self, host, cli_ip):
         if self.cache.get(host):
             data = self.cache[host][cli_ip]
+            ip = data['ip']
             ttl = data['ttl']
-            timeout = self.host_timeout(host, cli_ip)
-            if timeout > ttl:
-                return '', 0
-            else:
-                current_ttl = ttl - timeout
-                return data['ip'], current_ttl
+            # timeout = self.host_timeout(host, cli_ip)
+            # if timeout > ttl:
+            #     return data['ip'], ttl
+            # else:
+            #     current_ttl = ttl - timeout
+            #     return data['ip'], current_ttl
+            return ip, ttl
         else:
             return '', 0

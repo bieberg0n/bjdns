@@ -2,13 +2,14 @@ import json
 import time
 import struct
 import socket
-from gevent import monkey
+from gevent import monkey, spawn
 from flask import Flask, request
 from gevent.wsgi import WSGIServer
 # import aiohttp
 # import aiosocks
 # from aiosocks.connector import ProxyConnector, ProxyClientRequest
 from utils import log
+from cache import Cache
 # from iscnip import iscnip_func
 monkey.patch_all()
 import requests
@@ -72,11 +73,14 @@ def cn_query(cn_host, client_ip):
 
 def resp_from_json(json_str):
     j = json.loads(json_str)
-    for a in j['Answer']:
-        if a.get('type') == 1:
-            return a['data'], a['TTL']
+    if not j.get('Answer'):
+        return '', 0
     else:
-        return None
+        for a in j['Answer']:
+            if a.get('type') == 1:
+                return a['data'], a['TTL']
+        else:
+            return '', 0
 
 
 def foreign_query(foreign_host):
@@ -95,37 +99,36 @@ def query(host, cli_ip):
         return cn_query(host, cli_ip)
 
 
-def write_cache(cli_ip, host, ip, ttl):
-    if ip:
-        now = int(time.time())
-
-        if not cache.get(cli_ip):
-            cache[cli_ip] = dict()
-
-        cache[cli_ip][host] = dict(
-            ip=ip,
-            ttl=ttl,
-            querytime=now,
-        )
-    else:
-        return
+# def write_cache(cli_ip, host, ip, ttl):
+#     if ip:
+#         now = int(time.time())
+#
+#         if not cache.get(cli_ip):
+#             cache[cli_ip] = dict()
+#
+#         cache[cli_ip][host] = dict(
+#             ip=ip,
+#             ttl=ttl,
+#             querytime=now,
+#         )
+#     else:
+#         return
 
 
 def in_cache(cli_ip, host):
-    if cli_ip in cache and host in cache[cli_ip]:
-        ttl = cache[cli_ip][host]['ttl']
-        return host_timeout(cli_ip, host) <= ttl
-    else:
-        return False
+    # if cli_ip in cache and host in cache[cli_ip]:
+    #     ttl = cache[cli_ip][host]['ttl']
+    #     return host_timeout(cli_ip, host) <= ttl
+    # else:
+    #     return False
+    pass
 
 
 def is_cn_host(whitelist, host):
-    # dst_addrinfo = socket.getaddrinfo(host, 80)
-    # dst_ip = dst_addrinfo[0][4][0]
-    # i = iscnip(dst_ip)
-    # return i
     h = list(reversed(host.split('.')))
-    if len(h) > 1:
+    if h[0] == 'cn':
+        return True
+    elif len(h) > 1:
         return whitelist.get(h[0], {}).get(h[1]) == 1
     else:
         return False
@@ -145,26 +148,50 @@ def make_resp(ip, ttl):
     return d
 
 
-def resp_from_cache(cli_ip, host):
-    ip, ttl = cache[cli_ip][host]['ip'], cache[cli_ip][host]['ttl']
-    current_ttl = ttl - host_timeout(cli_ip, host)
-    # server.sendto(make_data(req, ip, current_ttl), cli_addr)
-    log(cli_ip, '[cache]', host, ip, '({})'.format(current_ttl))
-    return make_resp(ip, current_ttl)
+# def resp_from_cache(cli_ip, host):
+#     ip, ttl = cache[cli_ip][host]['ip'], cache[cli_ip][host]['ttl']
+#     current_ttl = ttl - host_timeout(cli_ip, host)
+#     log(cli_ip, '[cache]', host, ip, '({})'.format(current_ttl))
+#     return make_resp(ip, current_ttl)
+
+
+def update_cache(host, cli_ip, cache):
+    ip, ttl = query(host, cli_ip)
+    if ip:
+        cache.write(host, cli_ip, ip, ttl)
+        log(host, 'reflush')
+    return ip, ttl
 
 
 def bjdns(host, cli_ip):
+    _cli_ip = cli_ip
     if not is_cn_host(wl, host):
         cli_ip = 'default'
-    if in_cache(cli_ip, host):
-        resp = resp_from_cache(cli_ip, host)
+    ip, ttl = cache.select(host, cli_ip)
+    if ip:
+        t = cache.host_timeout(host, cli_ip)
+        # ttl超时
+        if t > ttl:
+            resp = make_resp(ip, ttl)
+            spawn(update_cache, host, cli_ip, cache)
+        else:
+            ttl = ttl - t
+            resp = make_resp(ip, ttl)
+        log(_cli_ip, host, '[cache]', ip, '(ttl: {})'.format(ttl))
         return resp
     else:
-        ip, ttl = query(host, cli_ip)
-        write_cache(cli_ip, host, ip, ttl)
-        # log(cache)
-        log(cli_ip, host, ip, '({})'.format(ttl))
+        ip, ttl = update_cache(host, cli_ip, cache)
+        log(_cli_ip, host, ip, '({})'.format(ttl))
         return make_resp(ip, ttl)
+
+    # if in_cache(cli_ip, host):
+    #     resp = resp_from_cache(cli_ip, host)
+    #     return resp
+    # else:
+    #     ip, ttl = query(host, cli_ip)
+    #     write_cache(cli_ip, host, ip, ttl)
+    #     log(cli_ip, host, ip, '({})'.format(ttl))
+    #     return make_resp(ip, ttl)
 
 
 @app.route('/', methods=['GET'])
@@ -180,12 +207,12 @@ def index():
 
 
 if __name__ == '__main__':
-    WSGIServer(('', 5353), app,
-               keyfile='ca.key',
-               certfile='ca.crt').serve_forever()
-
-
-# if __name__ == '__main__':
-    # serv = bjdns()
-    # serv()
-    # bjdns('github.com', '127.0.0.1')
+    cache = Cache()
+    keyfile = ''
+    certfile = ''
+    if keyfile:
+        WSGIServer(('', 53), app,
+                   keyfile='ca.key',
+                   certfile='ca.crt').serve_forever()
+    else:
+        WSGIServer(('', 5353), app).serve_forever()

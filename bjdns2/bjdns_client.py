@@ -124,7 +124,7 @@ def handle_func():
 def bjdns():
     global server
     handle = handle_func()
-    server = DatagramServer(('127.0.0.1', 8353), handle)
+    server = DatagramServer(('127.0.0.1', 53), handle)
     server.serve_forever()
 
 
