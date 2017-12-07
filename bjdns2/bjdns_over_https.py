@@ -2,23 +2,33 @@ import json
 import time
 import struct
 import socket
-from gevent import socket, monkey
+from gevent import monkey
 from flask import Flask, request
 from gevent.wsgi import WSGIServer
 # import aiohttp
 # import aiosocks
 # from aiosocks.connector import ProxyConnector, ProxyClientRequest
 from utils import log
-from iscnip import iscnip_func
+# from iscnip import iscnip_func
 monkey.patch_all()
 import requests
 
 
-iscnip = iscnip_func('ip.txt')
+# iscnip = iscnip_func('ip.txt')
 PROXY_ADDRESS = '127.0.0.1'
 PROXY_PORT = 1080
 cache = {}
 app = Flask(__name__)
+
+
+def whitelist():
+    with open('whitelist.json') as f:
+        txt = f.read()
+    d = json.loads(txt)
+    return d
+
+
+wl = whitelist()
 
 
 def is_private_ip(ip):
@@ -113,13 +123,16 @@ def in_cache(cli_ip, host):
         return False
 
 
-def is_cn_host(host):
-    # t = time.time()
-    dst_addrinfo = socket.getaddrinfo(host, 80)
-    dst_ip = dst_addrinfo[0][4][0]
-    i = iscnip(dst_ip)
-    # log(time.time() - t)
-    return i
+def is_cn_host(whitelist, host):
+    # dst_addrinfo = socket.getaddrinfo(host, 80)
+    # dst_ip = dst_addrinfo[0][4][0]
+    # i = iscnip(dst_ip)
+    # return i
+    h = list(reversed(host.split('.')))
+    if len(h) > 1:
+        return whitelist.get(h[0], {}).get(h[1]) == 1
+    else:
+        return False
 
 
 def host_timeout(cli_ip, host):
@@ -145,7 +158,7 @@ def resp_from_cache(cli_ip, host):
 
 
 def bjdns(host, cli_ip):
-    if not is_cn_host(host):
+    if not is_cn_host(wl, host):
         cli_ip = 'default'
     if in_cache(cli_ip, host):
         resp = resp_from_cache(cli_ip, host)
@@ -171,7 +184,9 @@ def index():
 
 
 if __name__ == '__main__':
-    WSGIServer(('', 5353), app).serve_forever()
+    WSGIServer(('', 5353), app,
+               keyfile='ca.key',
+               certfile='ca.crt').serve_forever()
 
 
 # if __name__ == '__main__':
