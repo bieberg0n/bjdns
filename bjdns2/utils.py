@@ -2,10 +2,10 @@ import pprint
 import time
 # from urllib.parse import urlparse
 # from gevent import socket, ssl  # , monkey
-import geventsocks
+# import geventsocks
 
 
-geventsocks.set_default_proxy('127.0.0.1', 1080)
+# geventsocks.set_default_proxy('127.0.0.1', 1080)
 
 
 def log(*args):

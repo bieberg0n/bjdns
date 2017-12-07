@@ -15,8 +15,8 @@ import requests
 
 
 # iscnip = iscnip_func('ip.txt')
-PROXY_ADDRESS = '127.0.0.1'
-PROXY_PORT = 1080
+# PROXY_ADDRESS = '127.0.0.1'
+# PROXY_PORT = 1080
 cache = {}
 app = Flask(__name__)
 
@@ -81,10 +81,6 @@ def resp_from_json(json_str):
 
 def foreign_query(foreign_host):
     url = 'https://dns.google.com/resolve?name={}'.format(foreign_host)
-    # conn = ProxyConnector(remote_resolve=True)
-    # async with aiohttp.ClientSession(connector=conn,
-    #                            request_class=ProxyClientRequest) as s:
-    #     async with s.get(url, proxy='socks5://127.0.0.1:1080') as r:
     s = requests.session()
     s.proxies = {'http': 'socks5://127.0.0.1:1080',
                  'https': 'socks5://127.0.0.1:1080'}
