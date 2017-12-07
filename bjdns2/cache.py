@@ -23,7 +23,7 @@ class Cache():
         return now - query_time
 
     def select(self, host, cli_ip):
-        if self.cache.get(host):
+        if self.cache.get(host) and self.cache.get(host).get(cli_ip):
             data = self.cache[host][cli_ip]
             ip = data['ip']
             ttl = data['ttl']

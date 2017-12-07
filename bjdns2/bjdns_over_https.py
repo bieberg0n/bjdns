@@ -181,7 +181,7 @@ def bjdns(host, cli_ip):
         return resp
     else:
         ip, ttl = update_cache(host, cli_ip, cache)
-        log(_cli_ip, host, ip, '({})'.format(ttl))
+        log(_cli_ip, host, ip, '(ttl: {})'.format(ttl))
         return make_resp(ip, ttl)
 
     # if in_cache(cli_ip, host):
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     certfile = ''
     if keyfile:
         WSGIServer(('', 53), app,
-                   keyfile='ca.key',
-                   certfile='ca.crt').serve_forever()
+                   keyfile=keyfile,
+                   certfile=certfile).serve_forever()
     else:
         WSGIServer(('', 5353), app).serve_forever()
