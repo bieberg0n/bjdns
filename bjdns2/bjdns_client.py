@@ -85,18 +85,31 @@ def make_data(data, ip, ttl):
     return res
 
 
-def query(data, cache, host, cli_addr):
+def in_cache(cache, host):
     mode = 'default'
     ip, ttl = cache.select(host, mode)
     if ip:
+        timeout = cache.host_timeout(host, mode)
+        if timeout < ttl:
+            return ip, ttl - timeout
+        else:
+            return '', 0
+    else:
+        return '', 0
+
+
+def query(data, cache, host, cli_addr):
+    mode = 'default'
+    ip, ttl = in_cache(cache, host)
+    if ip:
         resp = make_data(data, ip, ttl)
-        log(cli_addr, '[cache]', host, ip, 'ttl:', ttl)
+        log(cli_addr, '[cache]', host, ip, '(ttl:{})'.format(ttl))
     else:
         ip, ttl = query_by_https(host)
         if ip:
             cache.write(host, mode, ip, ttl)
             resp = make_data(data, ip, ttl)
-            log(cli_addr, host, ip, 'ttl:', ttl)
+            log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
         else:
             resp = b''
             log(cli_addr, host)
