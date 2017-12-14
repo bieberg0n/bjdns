@@ -17,7 +17,7 @@ class Cache():
             querytime=now,
         )
 
-    def host_timeout(self, host, cli_ip):
+    def timeout(self, host, cli_ip):
         query_time = self.cache[host][cli_ip]['querytime']
         now = int(time.time())
         return now - query_time

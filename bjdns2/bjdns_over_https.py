@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import json
-import struct
-import socket
+# import struct
+# import socket
 from gevent import (
+    # socket,
     monkey,
     spawn,
     ssl,
@@ -13,7 +14,10 @@ from flask import (
     Flask,
     request,
 )
-from utils import log
+from utils import (
+    log,
+    is_private_ip,
+)
 from cache import Cache
 monkey.patch_all()
 import requests
@@ -30,28 +34,6 @@ def whitelist():
 
 
 wl = whitelist()
-
-
-def is_private_ip(ip):
-    if ip == '' or ip == '1' or ip.startswith('127'):
-        return True
-    else:
-        ip1 = 167772160
-        ip2 = 2886729728
-        ip3 = 3232235520
-        binaryIp = socket.inet_aton(ip)
-        numIp = struct.unpack('!L', binaryIp)[0]
-        mark = 2**32-1
-        ag = (mark << 16) & numIp
-        if ip3 == ag:
-            return True
-        ag = mark << 20 & numIp
-        if ip2 == ag:
-            return True
-        ag = (mark << 24) & numIp
-        if ip1 == ag:
-            return True
-        return False
 
 
 def cn_query(cn_host, client_ip):
@@ -127,7 +109,7 @@ def bjdns(host, cli_ip):
         cli_ip = 'default'
     ip, ttl = cache.select(host, cli_ip)
     if ip:
-        t = cache.host_timeout(host, cli_ip)
+        t = cache.timeout(host, cli_ip)
         # ttl超时
         if t > ttl:
             resp = make_resp(ip, ttl)

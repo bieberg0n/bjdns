@@ -1,20 +1,38 @@
+#!/usr/bin/env python3
+
 import json
-from struct import unpack, pack
-from gevent import socket, monkey
+from struct import (
+    unpack,
+    pack,
+)
+from gevent import (
+    socket,
+    monkey,
+    spawn,
+)
 from gevent.server import DatagramServer
-from utils import log
 from cache import Cache
+from utils import (
+    log,
+    is_private_ip,
+)
 monkey.patch_all()
 import requests
 
 
-def query_by_https(host):
+def query_by_https(host, cli_ip):
+    url_template = 'https://g.bjong.me:5353/?dn={}&ip={}'
+
     if host == 'g.bjong.me':
         return '121.42.185.92', 3600
+
     else:
-        url = 'https://g.bjong.me:5353/?dn={}'.format(host)
+        if is_private_ip(cli_ip):
+            url = url_template.format(host, '')
+        else:
+            url = url_template.format(host, cli_ip)
+
         r = requests.get(url)
-        # log(r.text)
         if r.status_code == 200:
             result = json.loads(r.text)
             ip = result.get('data') if result else ''
@@ -25,16 +43,9 @@ def query_by_https(host):
 
 
 def query_by_udp(data):
-    s = socket.socket()
-    # s.connect(('114.114.114.114', 53))
+    s = socket.socket(2, 2)
     s.sendto(data, ('114.114.114.114', 53))
     res = s.recv(512)
-    # if len(res) <= 2:
-    #     s.close()
-    #     return b''
-    # else:
-    #     s.close()
-    #     return res[2:]
     return res
 
 
@@ -45,6 +56,7 @@ def parse_query(data):
         name += '.' if bit < 32 else chr(bit)
 
     type = unpack('>H', data[14+len(name):16+len(name)])
+    # log('type,', type)
     type = type[0]
     return name, type
 
@@ -85,34 +97,36 @@ def make_data(data, ip, ttl):
     return res
 
 
-def in_cache(cache, host):
-    mode = 'default'
-    ip, ttl = cache.select(host, mode)
+def update_cache(host, cli_ip, cache):
+    ip, ttl = query_by_https(host, cli_ip)
     if ip:
-        timeout = cache.host_timeout(host, mode)
-        if timeout < ttl:
-            return ip, ttl - timeout
-        else:
-            return '', 0
-    else:
-        return '', 0
+        cache.write(host, cli_ip, ip, ttl)
+        log(host, 'reflush')
+    return ip, ttl
 
 
 def query(data, cache, host, cli_addr):
-    mode = 'default'
-    ip, ttl = in_cache(cache, host)
+    # mode = 'default'
+    cli_ip = cli_addr[0]
+    ip, ttl = cache.select(host, cli_ip)
     if ip:
-        resp = make_data(data, ip, ttl)
+        # 命中缓存
+        timeout = cache.timeout(host, cli_ip)
+        if timeout > ttl:
+            # 超时更新缓存
+            spawn(update_cache, host, cli_ip, cache)
+        else:
+            ttl = ttl - timeout
         log(cli_addr, '[cache]', host, ip, '(ttl:{})'.format(ttl))
     else:
-        ip, ttl = query_by_https(host)
-        if ip:
-            cache.write(host, mode, ip, ttl)
-            resp = make_data(data, ip, ttl)
-            log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
-        else:
-            resp = b''
-            log(cli_addr, host)
+        # 未命中，更新缓存
+        ip, ttl = update_cache(host, cli_ip, cache)
+        log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
+
+    if ip:
+        resp = make_data(data, ip, ttl)
+    else:
+        resp = b''
 
     return resp
 
@@ -123,12 +137,12 @@ def handle_func():
 
     def handle(data, cli_addr):
         host, type = parse_query(data)
-        if type == 0:
+        if type == 1:
+            resp = query(data, cache, host, cli_addr)
+        else:
             # log(type)
             resp = query_by_udp(data)
-            log(cli_addr, '(type is not A)', host)
-        else:
-            resp = query(data, cache, host, cli_addr)
+            log(cli_addr, '[Type:{}]'.format(type), host)
         server.sendto(resp, cli_addr)
 
     return handle
