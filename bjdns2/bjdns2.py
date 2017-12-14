@@ -19,6 +19,7 @@ from utils import (
     is_private_ip,
 )
 from cache import Cache
+from bjdns2_config import config
 monkey.patch_all()
 import requests
 
@@ -139,8 +140,8 @@ def index():
 
 if __name__ == '__main__':
     cache = Cache()
-    keyfile = ''
-    certfile = ''
+    keyfile = config.keyfile
+    certfile = config.keyfile
     if keyfile:
         WSGIServer(
             ('', 5353), app,
