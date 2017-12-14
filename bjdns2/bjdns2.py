@@ -141,7 +141,7 @@ def index():
 if __name__ == '__main__':
     cache = Cache()
     keyfile = config.keyfile
-    certfile = config.keyfile
+    certfile = config.certfile
     if keyfile:
         WSGIServer(
             ('', 5353), app,
