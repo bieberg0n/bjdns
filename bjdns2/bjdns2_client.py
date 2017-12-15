@@ -16,15 +16,16 @@ from utils import (
     log,
     is_private_ip,
 )
+from bjdns2_config import config
 monkey.patch_all()
 import requests
 
 
 def query_by_https(host, cli_ip):
-    url_template = 'https://g.bjong.me:5353/?dn={}&ip={}'
+    url_template = bjdns2_url + '/?dn={}&ip={}'
 
-    if host == 'g.bjong.me':
-        return '121.42.185.92', 3600
+    if host == bjdns2_host:
+        return bjdns2_ip, 3600
 
     else:
         if is_private_ip(cli_ip):
@@ -151,10 +152,13 @@ def handle_func():
 def bjdns():
     global server
     handle = handle_func()
-    server = DatagramServer(('127.0.0.1', 53), handle)
+    server = DatagramServer(('0.0.0.0', 53), handle)
     server.serve_forever()
 
 
 if __name__ == '__main__':
     # log(query_by_https('baidu.com'))
+    bjdns2_url = config.bjdns2_url
+    bjdns2_host = bjdns2_url.split('/')[-1].split(':')[0]
+    bjdns2_ip = config.bjdns2_ip
     bjdns()

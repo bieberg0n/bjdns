@@ -75,5 +75,5 @@ sudo python3 bjdns.py bjdns.json
 ### Authors  
 bjong
 
-### License (MIT)  
-Copyright (c) 2015-2016 bjong
+### License (GNU GPL3)  
+Copyright (c) 2015-2017 bjong

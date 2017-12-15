@@ -65,8 +65,9 @@ def resp_from_json(json_str):
 def foreign_query(foreign_host):
     url = 'https://dns.google.com/resolve?name={}'.format(foreign_host)
     s = requests.session()
-    s.proxies = {'http': 'socks5://127.0.0.1:1080',
-                 'https': 'socks5://127.0.0.1:1080'}
+    if PROXY:
+        s.proxies = {'http': 'socks5://127.0.0.1:1080',
+                     'https': 'socks5://127.0.0.1:1080'}
     r = s.get(url)
     return resp_from_json(r.text)
 
@@ -142,6 +143,7 @@ if __name__ == '__main__':
     cache = Cache()
     keyfile = config.keyfile
     certfile = config.certfile
+    PROXY = config.proxy
     if keyfile:
         WSGIServer(
             ('', 5353), app,

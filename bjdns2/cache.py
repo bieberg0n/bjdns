@@ -23,16 +23,15 @@ class Cache():
         return now - query_time
 
     def select(self, host, cli_ip):
-        if self.cache.get(host) and self.cache.get(host).get(cli_ip):
-            data = self.cache[host][cli_ip]
-            ip = data['ip']
-            ttl = data['ttl']
-            # timeout = self.host_timeout(host, cli_ip)
-            # if timeout > ttl:
-            #     return data['ip'], ttl
-            # else:
-            #     current_ttl = ttl - timeout
-            #     return data['ip'], current_ttl
-            return ip, ttl
-        else:
-            return '', 0
+        # if self.cache.get(host) and self.cache.get(host).get(cli_ip):
+        #     data = self.cache[host][cli_ip]
+        #     ip = data['ip']
+        #     ttl = data['ttl']
+        #     return ip, ttl
+        # else:
+        #     return '', 0
+        data = self.cache.get(host, {}).get(cli_ip, {})
+        # if data:
+        ip = data.get('ip')
+        ttl = data.get('ttl')
+        return ip, ttl
