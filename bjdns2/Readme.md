@@ -29,7 +29,7 @@ $ nano bjdns2_config.py
 
 4. Run:
 ```
-$ ./start.sh
+$ sudo python3 bjdns2.py
 ```
 
 5. Test:
