@@ -1,0 +1,7 @@
+{
+    "keyfile": "",
+    "certfile": "",
+    "proxy": true,
+    "bjdns2_url": "https://your.domain.name:your_port",
+    "bjdns2_ip": "127.0.0.1"
+}

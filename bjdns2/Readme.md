@@ -23,8 +23,8 @@ $ cd bjdns2
 3. Edit config, if you have TLS cert.  
 If your server is in China, you need run Shadowsocks and the listen port is 1080; Or not, take proxy to 'False'.
 ```
-$ cp bjdns2_config_example.py bjdns2_config.py
-$ nano bjdns2_config.py
+$ cp config_example.json config.json  
+$ nano config.json
 ```
 
 4. Run:

@@ -17,9 +17,10 @@ from flask import (
 from utils import (
     log,
     is_private_ip,
+    config,
 )
 from cache import Cache
-from bjdns2_config import config
+# from bjdns2_config import config
 monkey.patch_all()
 import requests
 
@@ -141,9 +142,11 @@ def index():
 
 if __name__ == '__main__':
     cache = Cache()
-    keyfile = config.keyfile
-    certfile = config.certfile
-    PROXY = config.proxy
+    cfg = config()
+    log(cfg)
+    keyfile = cfg['keyfile']
+    certfile = cfg['certfile']
+    PROXY = cfg['proxy']
     if keyfile:
         WSGIServer(
             ('', 5353), app,

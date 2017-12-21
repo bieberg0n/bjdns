@@ -15,8 +15,9 @@ from cache import Cache
 from utils import (
     log,
     is_private_ip,
+    config,
 )
-from bjdns2_config import config
+# from bjdns2_config import config
 monkey.patch_all()
 import requests
 
@@ -158,7 +159,9 @@ def bjdns():
 
 if __name__ == '__main__':
     # log(query_by_https('baidu.com'))
-    bjdns2_url = config.bjdns2_url
+    cfg = config()
+    log(cfg)
+    bjdns2_url = cfg['bjdns2_url']
     bjdns2_host = bjdns2_url.split('/')[-1].split(':')[0]
-    bjdns2_ip = config.bjdns2_ip
+    bjdns2_ip = cfg['bjdns2_ip']
     bjdns()

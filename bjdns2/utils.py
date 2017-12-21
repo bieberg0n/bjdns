@@ -1,5 +1,6 @@
 import pprint
 import time
+import json
 import struct
 from gevent import socket
 
@@ -31,3 +32,10 @@ def is_private_ip(ip):
         if ip1 == ag:
             return True
         return False
+
+
+def config():
+    with open('config.json') as f:
+        txt = f.read()
+    cfg = json.loads(txt)
+    return cfg
