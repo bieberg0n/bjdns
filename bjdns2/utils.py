@@ -34,8 +34,8 @@ def is_private_ip(ip):
         return False
 
 
-def config():
-    with open('config.json') as f:
+def config(config_file):
+    with open(config_file) as f:
         txt = f.read()
     cfg = json.loads(txt)
     return cfg

@@ -1,5 +1,24 @@
 #!/usr/bin/env python3
 
+"""bjdns2_client.py
+
+Usage:
+  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) (-i <BJDNS2_SERVER_IP>)
+  bjdns2_client.py (-c <CONFIG_FILE>)
+
+
+Examples:
+  bjdns2_client.py -s "https://your.domain.name:your_port" -i "127.0.0.1"
+  bjdns2_client.py -c "config.json"
+
+Options:
+  -h --help             Show this screen
+  -s BJDNS2_SERVER_ADDR bjdns2 server address
+  -i BJDNS2_SERVER_IP   bjdns2 server ip
+  -c CONFIG_FILE        path to config file
+"""
+
+from docopt import docopt
 import json
 from struct import (
     unpack,
@@ -158,10 +177,12 @@ def bjdns():
 
 
 if __name__ == '__main__':
-    # log(query_by_https('baidu.com'))
-    cfg = config()
-    log(cfg)
-    bjdns2_url = cfg['bjdns2_url']
+    args = docopt(__doc__)
+    if args['-c']:
+        cfg = config(args['-c'])
+        bjdns2_url, bjdns2_ip = cfg['bjdns2_url'], cfg['bjdns2_ip']
+    else:
+        bjdns2_url, bjdns2_ip = args['-s'], args['-i']
+    print('bjdns2 client start.\nbjdns2 server:', bjdns2_url, bjdns2_ip, '\n')
     bjdns2_host = bjdns2_url.split('/')[-1].split(':')[0]
-    bjdns2_ip = cfg['bjdns2_ip']
     bjdns()
