@@ -53,21 +53,32 @@ def query_by_https(host, cli_ip):
         else:
             url = url_template.format(host, cli_ip)
 
-        r = requests.get(url)
-        if r.status_code == 200:
-            result = json.loads(r.text)
-            ip = result.get('data') if result else ''
-            ttl = result.get('ttl')
-            return ip, ttl
-        else:
+        try:
+            r = requests.get(url)
+        except Exception as e:
+            log('Requests error:', e)
             return '', 0
+        else:
+            if r.status_code == 200:
+                result = json.loads(r.text)
+                ip = result.get('data') if result else ''
+                ttl = result.get('ttl')
+                return ip, ttl
+            else:
+                return '', 0
 
 
 def query_by_udp(data):
     s = socket.socket(2, 2)
+    s.settimeout(3)
     s.sendto(data, ('114.114.114.114', 53))
-    res = s.recv(512)
-    return res
+    try:
+        res = s.recv(512)
+    except socket.timeout as e:
+        log('query special type:', e)
+        return b''
+    else:
+        return res
 
 
 def parse_query(data):
