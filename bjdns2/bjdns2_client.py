@@ -190,7 +190,7 @@ def bjdns():
 if __name__ == '__main__':
     args = docopt(__doc__)
     if args['-c']:
-        cfg = config(args['-c'])
+        cfg = config(args['-c']).get('client')
         bjdns2_url, bjdns2_ip = cfg['bjdns2_url'], cfg['bjdns2_ip']
     else:
         bjdns2_url, bjdns2_ip = args['-s'], args['-i']

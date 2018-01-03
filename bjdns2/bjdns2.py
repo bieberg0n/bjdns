@@ -142,17 +142,21 @@ def index():
 
 if __name__ == '__main__':
     cache = Cache()
-    cfg = config('config.json')
+    cfg = config('config.json').get('server')
     log(cfg)
     keyfile = cfg['keyfile']
     certfile = cfg['certfile']
     PROXY = cfg['proxy']
     if keyfile:
         WSGIServer(
-            ('', 5353), app,
+            (cfg['listen_ip'], cfg['listen_port']),
+            app,
             keyfile=keyfile,
             certfile=certfile,
             ssl_version=ssl.PROTOCOL_TLSv1_2
         ).serve_forever()
     else:
-        WSGIServer(('', 5353), app).serve_forever()
+        WSGIServer(
+            (cfg['listen_ip'], cfg['listen_port']),
+            app,
+        ).serve_forever()

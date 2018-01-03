@@ -1,7 +1,13 @@
 {
-    "keyfile": "",
-    "certfile": "",
-    "proxy": true,
-    "bjdns2_url": "https://your.domain.name:your_port",
-    "bjdns2_ip": "127.0.0.1"
+    "server": {
+        "listen_ip": "127.0.0.1",
+        "listen_port": 5353,
+        "keyfile": "",
+        "certfile": "",
+        "proxy": true
+    },
+    "client": {
+        "bjdns2_url": "https://your.domain.name:your_port",
+        "bjdns2_ip": "127.0.0.1"
+    }
 }
