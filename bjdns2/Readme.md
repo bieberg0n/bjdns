@@ -7,13 +7,13 @@ bjdns2 is divided into server and client：
 * The client runs locally, connects to the server over HTTP (S) and initiates the request.  
 
 ### Usage  
-I have set up a bjdns2 server on Aliyun. So you can just run bjdns2 client to try it.  
+I have set up a bjdns2 server on g.bjong.me:5353. So you can just run bjdns2 client to try it.  
 
 #### Client:
-1. Install Python3, gevent, flask, docopt:
+1. Install Python3, gevent, flask, docopt, PySocks:
 ```
 $ sudo apt install python3 python3-pip
-$ sudo pip3 install gevent flask docopt
+$ sudo pip3 install gevent flask docopt PySocks
 ```
 2. Clone:
 ```
@@ -41,7 +41,7 @@ Options:
 ```
 You can use my bjdns2 server directly:
 ```
-$ sudo python3 bjdns2_client.py -s "https://g.bjong.me:5353" -i "121.42.185.92"
+$ sudo python3 bjdns2_client.py -s "https://g.bjong.me:5353" -i "116.196.98.219"
 ```
 
 Or use config file:
