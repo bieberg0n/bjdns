@@ -142,7 +142,7 @@ def index():
 
 if __name__ == '__main__':
     cache = Cache()
-    cfg = config()
+    cfg = config('config.json')
     log(cfg)
     keyfile = cfg['keyfile']
     certfile = cfg['certfile']
