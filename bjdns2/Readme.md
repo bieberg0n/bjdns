@@ -10,18 +10,23 @@ bjdns2 is divided into server and client：
 I have set up a bjdns2 server on g.bjong.me:5353. So you can just run bjdns2 client to try it.  
 
 #### Client:
-1. Install Python3, gevent, flask, docopt, PySocks:
+1. Install Python3:
 ```
 $ sudo apt install python3 python3-pip
-$ sudo pip3 install gevent flask docopt PySocks
 ```
+
 2. Clone:
 ```
 $ git clone https://github.com/bieberg0n/bjdns.git
 $ cd bjdns/bjdns2
 ```
 
-3. Client usage:
+3. Install requires:
+```
+$ sudo pip3 install -r requirements.txt
+```
+
+4. Client usage:
 ```
 $ python3 bjdns2_client.py -h
 Usage:
@@ -50,15 +55,15 @@ $ cp config_example.json config.json
 $ nano config.json  # Edit bjdns2 server addr and ip
 $ sudo python3 bjdns2_client.py -c config.json  # run
 ```
-4. Test:
+5. Test:
 ```
 dig www.twitter.com @127.0.0.1
 ```
 
-5. Now you can set your system's dns to "127.0.0.1".  
+6. Now you can set your system's dns to "127.0.0.1".  
 
 #### Server:
-1. Do client usage 1 - 2;
+1. Do client usage 1 - 3;
 
 2. Edit config, if you have TLS cert.  
 If your server is in China, you need run Shadowsocks and the listen port is 1080; Or not, take proxy to 'False'.
