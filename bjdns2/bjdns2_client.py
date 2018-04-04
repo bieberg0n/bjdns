@@ -43,7 +43,8 @@ import requests
 def query_by_udp(data):
     s = socket.socket(2, 2)
     s.settimeout(2)
-    s.sendto(data, ('114.114.114.114', 53))
+    # s.sendto(data, ('114.114.114.114', 53))
+    s.sendto(data, ('119.29.29.29', 53))
     try:
         res = s.recv(512)
     except socket.timeout as e:
