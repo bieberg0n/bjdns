@@ -67,8 +67,8 @@ def foreign_query(foreign_host):
     url = 'https://dns.google.com/resolve?name={}'.format(foreign_host)
     s = requests.session()
     if PROXY:
-        s.proxies = {'http': 'socks5://127.0.0.1:1080',
-                     'https': 'socks5://127.0.0.1:1080'}
+        s.proxies = {'http': 'socks5h://127.0.0.1:1080',
+                     'https': 'socks5h://127.0.0.1:1080'}
     r = s.get(url)
     return resp_from_json(r.text)
 
