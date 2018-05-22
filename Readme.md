@@ -4,7 +4,8 @@ Maybe you need:  [bjdns2](https://github.com/bieberg0n/bjdns/tree/master/bjdns2)
 
 ---
 一个简单的带缓存的 DNS 服务器，用于防止 DNS 污染。  
-已在阿里云架设了此项目(121.42.185.92)  
+~~已在阿里云架设了此项目(121.42.185.92)~~  
+已在京东云架设了此项目(116.196.98.219)  
 
 ---
 
