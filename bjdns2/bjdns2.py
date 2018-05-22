@@ -142,8 +142,12 @@ def index():
     cli_ip = request.args.get('ip')
     if host:
         cli_ip = cli_ip if cli_ip else request.remote_addr.split(':')[-1]
-        resp = bjdns.bjdns(host, cli_ip)
-        return json.dumps(resp).encode()
+        try:
+            resp = bjdns.bjdns(host, cli_ip)
+        except:
+            resp = make_resp('', 0)
+        finally:
+            return json.dumps(resp).encode()
     else:
         return 'BJDNS'
 
