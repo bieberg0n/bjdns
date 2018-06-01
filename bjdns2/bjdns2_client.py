@@ -3,18 +3,20 @@
 """bjdns2_client.py
 
 Usage:
-  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) (-i <BJDNS2_SERVER_IP>)
+  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) (-i <BJDNS2_SERVER_IP>) [-d <DIRECT_DNS_SERVER>] [-l <LISTEN_IP_PORT>]
   bjdns2_client.py (-c <CONFIG_FILE>)
 
 
 Examples:
-  bjdns2_client.py -s "https://your.domain.name:your_port" -i "127.0.0.1"
+  bjdns2_client.py -s "https://your.domain.name:your_port" -i "127.0.0.1" -d "119.29.29.29"
   bjdns2_client.py -c "config.json"
 
 Options:
   -h --help             Show this screen
   -s BJDNS2_SERVER_ADDR bjdns2 server address
   -i BJDNS2_SERVER_IP   bjdns2 server ip
+  -d DIRECT_DNS_SERVER  dns server, be used when query type is not A
+  -l LISTEN_IP_PORT     listen ip and port
   -c CONFIG_FILE        path to config file
 """
 
@@ -29,6 +31,7 @@ from gevent import (
     monkey,
     spawn,
 )
+from urllib.parse import urlparse
 from gevent.server import DatagramServer
 from cache import Cache
 from utils import (
@@ -43,9 +46,7 @@ import requests
 def query_by_udp(data):
     s = socket.socket(2, 2)
     s.settimeout(2)
-    # s.sendto(data, ('114.114.114.114', 53))
-    # s.sendto(data, ('119.29.29.29', 53))
-    s.sendto(data, ('223.5.5.5', 53))
+    s.sendto(data, (direct_dns_serv, 53))
     try:
         res = s.recv(512)
     except socket.timeout as e:
@@ -62,7 +63,6 @@ def parse_query(data):
         name += '.' if bit < 32 else chr(bit)
 
     type = unpack('>H', data[14+len(name):16+len(name)])
-    # log('type,', type)
     type = type[0]
     return name, type
 
@@ -93,22 +93,23 @@ def make_data(data, ip, ttl):
                 dns_answer['datalength'])
 
     ip = ip.split('.')
-    # try:
     ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
                     int(ip[2]), int(ip[3]))
-    # except ValueError as e:
-    #     print(e, cache)
 
     res += ip_bytes
     return res
 
 
 class Bjdns2:
-    def __init__(self, bjdns2_host, bjdns2_ip):
+    def __init__(self, listen, bjdns2_url, bjdns2_ip):
         self.cache = Cache()
-        self.server = DatagramServer(('0.0.0.0', 53), self.handle)
+
+        ip, port_str = listen.split(':')
+        self.server = DatagramServer((ip, int(port_str)), self.handle)
         self.session = requests.Session()
-        self.bjdns2_host = bjdns2_host
+
+        url = urlparse(bjdns2_url).netloc
+        self.bjdns2_host = url[:url.rfind(':')]
         self.bjdns2_ip = bjdns2_ip
 
     def query_by_https(self, host, cli_ip):
@@ -192,10 +193,22 @@ if __name__ == '__main__':
     if args['-c']:
         cfg = config(args['-c']).get('client')
         bjdns2_url, bjdns2_ip = cfg['bjdns2_url'], cfg['bjdns2_ip']
+        direct_dns_serv = cfg.get('direct_dns_server')
+        listen = cfg.get("listen")
     else:
         bjdns2_url, bjdns2_ip = args['-s'], args['-i']
-    bjdns2_host = bjdns2_url.split('/')[-1].split(':')[0]
+        direct_dns_serv = args.get('-d')
+        listen = args.get('-l')
 
-    print('bjdns2 client start.\nbjdns2 server:', bjdns2_url, bjdns2_ip, '\n')
-    bjdns2 = Bjdns2(bjdns2_host, bjdns2_ip)
+    if not direct_dns_serv:
+        direct_dns_serv = '119.29.29.29'
+    if not listen:
+        listen = '0.0.0.0:53'
+
+    print('bjdns2 client start.')
+    print('bjdns2 server:', bjdns2_url, bjdns2_ip)
+    print('direct dns server:', direct_dns_serv)
+    print('listen:', listen)
+    print()
+    bjdns2 = Bjdns2(listen, bjdns2_url, bjdns2_ip)
     bjdns2.start()
