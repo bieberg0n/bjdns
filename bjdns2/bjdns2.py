@@ -35,11 +35,8 @@ def whitelist():
     return d
 
 
-wl = whitelist()
-
-
-def resp_from_json(json_str):
-    j = json.loads(json_str)
+def resp_from_json(json_str: dict):
+    j = json_str
     if not j.get('Answer'):
         return '', 0
     else:
@@ -50,8 +47,49 @@ def resp_from_json(json_str):
             return '', 0
 
 
+def make_resp(name, ip, ttl):
+    resp = {
+        "TC": False,
+        "RD": True,
+        "RA": True,
+        "AD": True,
+        "CD": False,
+        "Question": [
+            {
+                "name": name,
+                "type": 1
+            }
+        ],
+    }
+    if ip:
+        resp['Status'] = 0
+        resp["Answer"] = [
+            {
+                "name": name,
+                "type": 1,
+                "TTL": ttl,
+                "data": ip
+            }
+        ]
+    else:
+        resp['Status'] = 2
+    return resp
+
+
+def is_cn_host(whitelist, host):
+    h = [part for part in reversed(host.split('.')) if part]
+    if h[0] == 'cn':
+        return True
+    elif len(h) > 1:
+        return whitelist.get(h[0], {}).get(h[1]) == 1
+    else:
+        return False
+
+
 class Query:
     def __init__(self, by_proxy):
+        self.cache = Cache()
+        self.wl = whitelist()
         self.s_cn = requests.session()
         self.s_proxy = requests.session()
         if by_proxy:
@@ -60,7 +98,7 @@ class Query:
             'https': 'socks5h://127.0.0.1:1080'
             }
 
-    def _cn_query(self, cn_host, client_ip):
+    def _cn_query(self, cn_host, client_ip) -> map:
         url_template = 'http://119.29.29.29/d?dn={}&ip={}'
         if is_private_ip(client_ip):
             url = url_template.format(cn_host, '')
@@ -70,82 +108,69 @@ class Query:
         result = r.text.split(';')[0]
         ip = result if result else ''
         ttl = 3600
-        return ip, ttl
+        return make_resp(cn_host, ip, ttl)
 
-    def _foreign_query(self, foreign_host):
-        url = 'https://dns.google.com/resolve?name={}'.format(foreign_host)
-        r = self.s_proxy.get(url)
-        return resp_from_json(r.text)
+    def _foreign_query(self, name, type) -> map:
+        url = 'https://1.1.1.1/dns-query?ct=application/dns-json&name={}&type={}'
+        r = self.s_proxy.get(url.format(name, type))
+        return json.loads(r.text)
 
-    def query(self, host, cli_ip):
-        if cli_ip == 'default':
-            return self._foreign_query(host)
+    def query(self, question: map, src_ip: str) -> map:
+        name, dns_type = question['name'], question['type']
+        if is_cn_host(self.wl, name):
+            cn_flag = True
         else:
-            return self._cn_query(host, cli_ip)
+            cn_flag = False
+            src_ip = '0.0.0.0'
 
+        resp = self.cache.select(src_ip, question)
+        if not resp:
+            if cn_flag and dns_type in (1, '1', 'A'):
+                resp = self._cn_query(name, src_ip)
+            else:
+                resp = self._foreign_query(name, dns_type)
 
-def is_cn_host(whitelist, host):
-    h = list(reversed(host.split('.')))
-    if h[0] == 'cn':
-        return True
-    elif len(h) > 1:
-        return whitelist.get(h[0], {}).get(h[1]) == 1
-    else:
-        return False
+            if resp['Status'] == 0:
+                self.cache.write(src_ip, resp)
 
+            cache_flag = ''
 
-def make_resp(ip, ttl):
-    d = dict(
-        data=ip,
-        ttl=ttl,
-    )
-    return d
+        else:
+            cache_flag = '[Cache] '
+
+        return resp, cache_flag
 
 
 class Bjdns:
     def __init__(self, by_proxy):
-        self.cache = Cache()
         self.query = Query(by_proxy)
 
-    def _update_cache(self, host, cli_ip):
-        ip, ttl = self.query.query(host, cli_ip)
-        if ip:
-            self.cache.write(host, cli_ip, ip, ttl)
-            log(host, 'reflush')
-        return ip, ttl
-
-    def bjdns(self, host, cli_ip):
-        _cli_ip = cli_ip
-        if not is_cn_host(wl, host):
-            cli_ip = 'default'
-        ip, ttl = self.cache.select(host, cli_ip)
-        if ip:
-            t = self.cache.timeout(host, cli_ip)
-            # ttl超时
-            if t > ttl:
-                resp = make_resp(ip, ttl)
-                spawn(self._update_cache, host, cli_ip)
-            else:
-                ttl = ttl - t
-                resp = make_resp(ip, ttl)
-            log(_cli_ip, host, '[cache]', ip, '(ttl: {})'.format(ttl))
-            return resp
+    def bjdns(self, question: map, src_ip: str) -> map:
+        name, dns_type = question['name'], question['type']
+        resp, cache_flag = self.query.query(question, src_ip)
+        if resp['Status'] == 0:
+            data, ttl = resp_from_json(resp)
+            log('{0} {1} {2}{3} (ttl: {4})'.format(src_ip, name, cache_flag, data, ttl))
         else:
-            ip, ttl = self._update_cache(host, cli_ip)
-            log(_cli_ip, host, ip, '(ttl: {})'.format(ttl))
-            return make_resp(ip, ttl)
+            log('{} {}'.format(src_ip, name))
+
+        return resp
 
 
 @app.route('/', methods=['GET'])
 def index():
     host = request.args.get('dn')
     cli_ip = request.args.get('ip')
+    dns_type = int(request.args.get('type', 1))
+
     if host:
         cli_ip = cli_ip if cli_ip else request.remote_addr.split(':')[-1]
+        question = dict(name=host, type=dns_type)
         try:
-            resp = bjdns.bjdns(host, cli_ip)
-        except:
-            resp = make_resp('', 0)
+            resp = bjdns.bjdns(question, cli_ip)
+        except requests.exceptions.SSLError as e:
+            log(e)
+            resp = make_resp('', '', 0)
         finally:
             return json.dumps(resp).encode()
     else:

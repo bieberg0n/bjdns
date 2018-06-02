@@ -1,37 +1,41 @@
 import time
+from utils import log
 
-
-class Cache():
+class Cache:
     def __init__(self):
-        self.cache = {}
+        self.cache = dict()
 
-    def write(self, host, cli_ip, ip, ttl):
-        now = int(time.time())
+    def write(self, src_ip: str, resp: map):
+        if resp.get('Status') != 0:
+            return
 
-        if not self.cache.get(host):
-            self.cache[host] = dict()
+        questions = resp.get('Question')
 
-        self.cache[host][cli_ip] = dict(
-            ip=ip,
-            ttl=ttl,
-            querytime=now,
-        )
+        if not self.cache.get(src_ip):
+            self.cache[src_ip] = dict()
 
-    def timeout(self, host, cli_ip):
-        query_time = self.cache[host][cli_ip]['querytime']
-        now = int(time.time())
-        return now - query_time
+        for question in questions:
+            key = (question.get('type'), question.get('name'))
+            self.cache[src_ip][key] = dict()
+            self.cache[src_ip][key]['mtime'] = int(time.time())
+            self.cache[src_ip][key]['response'] = resp
 
-    def select(self, host, cli_ip):
-        # if self.cache.get(host) and self.cache.get(host).get(cli_ip):
-        #     data = self.cache[host][cli_ip]
-        #     ip = data['ip']
-        #     ttl = data['ttl']
-        #     return ip, ttl
-        # else:
-        #     return '', 0
-        data = self.cache.get(host, {}).get(cli_ip, {})
-        # if data:
-        ip = data.get('ip')
-        ttl = data.get('ttl')
-        return ip, ttl
+    def select(self, src_ip: str, question: map):
+        dns_type, name = question.get('type'), question.get('name')
+        if not name.endswith('.'):
+            name += '.'
+
+        value = self.cache.get(src_ip, {}).get((dns_type, name))
+
+        if value:
+            now = time.time()
+            for answer in value['response']['Answer']:
+                # log(answer, now - value['mtime'], answer['TTL'])
+                if now - value['mtime'] > answer['TTL']:
+                    log(question['name'], 'Need update')
+                    return None
+            else:
+                return value['response']
+
+        else:
+            return None

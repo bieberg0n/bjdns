@@ -34,6 +34,7 @@ from gevent import (
 from urllib.parse import urlparse
 from gevent.server import DatagramServer
 from cache import Cache
+from bjdns2 import resp_from_json
 from utils import (
     log,
     is_private_ip,
@@ -124,56 +125,48 @@ class Bjdns2:
             else:
                 url = url_template.format(host, cli_ip)
 
-            try:
-                r = self.session.get(url)
-            except Exception as e:
-                log('Requests error:', e)
+            # try:
+            r = self.session.get(url)
+            # except Exception as e:
+            #     log('Requests error:', e)
+                # return '', 0
+            # else:
+            # if r.status_code == 200:
+            result = json.loads(r.text)
+            if result['Status'] == 0:
+                self.cache.write(cli_ip, result)
+                ip, ttl = resp_from_json(result)
+                return ip, ttl
+            else:
                 return '', 0
-            else:
-                if r.status_code == 200:
-                    result = json.loads(r.text)
-                    ip = result.get('data') if result else ''
-                    ttl = result.get('ttl')
-                    return ip, ttl
-                else:
-                    return '', 0
 
-    def update_cache(self, host, cli_ip):
-        ip, ttl = self.query_by_https(host, cli_ip)
-        if ip:
-            self.cache.write(host, cli_ip, ip, ttl)
-            log(host, 'reflush')
-        return ip, ttl
+    def query(self, data, host, cli_addr) -> bytes:
+        src_ip, _ = cli_addr
+        question = dict(name=host, type=1)
+        resp = self.cache.select(src_ip, question)
 
-    def query(self, data, cache, host, cli_addr):
-        # mode = 'default'
-        cli_ip = cli_addr[0]
-        ip, ttl = cache.select(host, cli_ip)
-        if ip:
-            # 命中缓存
-            timeout = cache.timeout(host, cli_ip)
-            if timeout > ttl:
-                # 超时更新缓存
-                spawn(self.update_cache, host, cli_ip)
-            else:
-                ttl = ttl - timeout
+        if resp:
+            ip, ttl = resp_from_json(resp)
             log(cli_addr, '[cache]', host, ip, '(ttl:{})'.format(ttl))
+
         else:
-            # 未命中，更新缓存
-            ip, ttl = self.update_cache(host, cli_ip)
+            ip, ttl = self.query_by_https(host, src_ip)
             log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
 
         if ip:
-            resp = make_data(data, ip, ttl)
+            return make_data(data, ip, ttl)
         else:
-            resp = b''
-
-        return resp
+            return b''
 
     def handle(self, data, cli_addr):
         host, type = parse_query(data)
         if type == 1:
-            resp = self.query(data, self.cache, host, cli_addr)
+            try:
+                resp = self.query(data, host, cli_addr)
+            except Exception as e:
+                log(e)
+                resp = b''
+
         else:
             if host == self.bjdns2_host and type == 28:
                 log(host, type)
@@ -181,6 +174,7 @@ class Bjdns2:
             else:
                 resp = query_by_udp(data)
             log(cli_addr, '[Type:{}]'.format(type), host)
+
         self.server.sendto(resp, cli_addr)
 
     def start(self):
