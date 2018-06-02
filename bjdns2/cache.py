@@ -26,6 +26,7 @@ class Cache:
             name += '.'
 
         value = self.cache.get(src_ip, {}).get((dns_type, name))
+        # log((dns_type, name), value, self.cache.get(src_ip, {}))
 
         if value:
             now = time.time()

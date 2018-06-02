@@ -48,6 +48,9 @@ def resp_from_json(json_str: dict):
 
 
 def make_resp(name, ip, ttl):
+    if not name.endswith('.'):
+        name += '.'
+
     resp = {
         "TC": False,
         "RD": True,
