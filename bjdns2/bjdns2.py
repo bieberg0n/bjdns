@@ -171,7 +171,7 @@ def index():
         question = dict(name=host, type=dns_type)
         try:
             resp = bjdns.bjdns(question, cli_ip)
-        except requests.exceptions.SSLError as e:
+        except Exception as e:
             log(e)
             resp = make_resp('', '', 0)
         finally:
