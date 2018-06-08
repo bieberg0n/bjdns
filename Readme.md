@@ -1,6 +1,6 @@
 # bjdns
 
-Maybe you need:  [bjdns2](https://github.com/bieberg0n/bjdns/tree/master/bjdns2)  
+Maybe you need:  [bjdns2](https://github.com/bieberg0n/bjdns/tree/bjdns2)  
 
 ---
 一个简单的带缓存的 DNS 服务器，用于防止 DNS 污染。  
@@ -53,7 +53,7 @@ sudo pip3 install -U gevent requests
 
 2 clone bjdns:
 ```
-git clone https://github.com/bieberg0n/bjdns.git  
+git clone -b bjdns https://github.com/bieberg0n/bjdns.git  
 cd bjdns  
 
 ```
