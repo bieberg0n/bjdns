@@ -9,7 +9,8 @@ from gevent import (
     spawn,
     ssl,
 )
-from gevent.wsgi import WSGIServer
+monkey.patch_all()
+from gevent.pywsgi import WSGIServer
 from flask import (
     Flask,
     request,
@@ -21,7 +22,6 @@ from utils import (
 )
 from cache import Cache
 # from bjdns2_config import config
-monkey.patch_all()
 import requests
 
 
