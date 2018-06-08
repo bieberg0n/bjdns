@@ -1,4 +1,0 @@
-gevent
-flask
-docopt
-PySocks
