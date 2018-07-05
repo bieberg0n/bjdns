@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 
 import json
-# import struct
-# import socket
-from gevent import (
-    # socket,
-    monkey,
-    spawn,
-    ssl,
-)
-monkey.patch_all()
-from gevent.pywsgi import WSGIServer
+# from gevent import (
+#     monkey,
+#     ssl,
+# )
+# monkey.patch_all()
+# from gevent.pywsgi import WSGIServer
+import requests
 from flask import (
     Flask,
     request,
@@ -21,8 +18,6 @@ from utils import (
     config,
 )
 from cache import Cache
-# from bjdns2_config import config
-import requests
 
 
 app = Flask(__name__)
@@ -180,25 +175,28 @@ def index():
         return 'BJDNS'
 
 
+cfg = config('config.json').get('server')
+by_proxy = cfg['proxy']
+bjdns = Bjdns(by_proxy)
+
+
 if __name__ == '__main__':
-    cfg = config('config.json').get('server')
     log(cfg)
     keyfile = cfg['keyfile']
     certfile = cfg['certfile']
-    by_proxy = cfg['proxy']
 
-    bjdns = Bjdns(by_proxy)
 
-    if keyfile:
-        WSGIServer(
-            (cfg['listen_ip'], cfg['listen_port']),
-            app,
-            keyfile=keyfile,
-            certfile=certfile,
-            ssl_version=ssl.PROTOCOL_TLSv1_2
-        ).serve_forever()
-    else:
-        WSGIServer(
-            (cfg['listen_ip'], cfg['listen_port']),
-            app,
-        ).serve_forever()
+    # if keyfile:
+    #     WSGIServer(
+    #         (cfg['listen_ip'], cfg['listen_port']),
+    #         app,
+    #         keyfile=keyfile,
+    #         certfile=certfile,
+    #         ssl_version=ssl.PROTOCOL_TLSv1_2
+    #     ).serve_forever()
+    # else:
+    #     WSGIServer(
+    #         (cfg['listen_ip'], cfg['listen_port']),
+    #         app,
+    #     ).serve_forever()
+    app.run(debug=True)

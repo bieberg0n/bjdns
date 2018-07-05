@@ -2,7 +2,7 @@ import pprint
 import time
 import json
 import struct
-from gevent import socket
+import socket
 
 
 def log(*args):

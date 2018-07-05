@@ -1,4 +1,6 @@
+requests
 gevent
 flask
 docopt
 PySocks
+gunicorn
