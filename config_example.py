@@ -9,3 +9,4 @@ keepalive = 120
 # certfile = ''
 # ssl_version = 5
 by_proxy = True
+accesslog = '-'
