@@ -18,6 +18,7 @@ from utils import (
     config,
 )
 from cache import Cache
+import config
 
 
 app = Flask(__name__)
@@ -175,15 +176,15 @@ def index():
         return 'BJDNS'
 
 
-cfg = config('config.json').get('server')
-by_proxy = cfg['proxy']
-bjdns = Bjdns(by_proxy)
+# cfg = config('config.json').get('server')
+# by_proxy = cfg['proxy']
+bjdns = Bjdns(config.by_proxy)
 
 
 if __name__ == '__main__':
-    log(cfg)
-    keyfile = cfg['keyfile']
-    certfile = cfg['certfile']
+    # log(cfg)
+    # keyfile = cfg['keyfile']
+    # certfile = cfg['certfile']
 
 
     # if keyfile:

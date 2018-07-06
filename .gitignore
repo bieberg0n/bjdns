@@ -78,3 +78,4 @@ bjdns2_config.py
 config.json
 .idea/
 bjdns2/
+config.py
