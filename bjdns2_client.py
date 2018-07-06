@@ -3,21 +3,17 @@
 """bjdns2_client.py
 
 Usage:
-  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) (-i <BJDNS2_SERVER_IP>) [-d <DIRECT_DNS_SERVER>] [-l <LISTEN_IP_PORT>]
-  bjdns2_client.py (-c <CONFIG_FILE>)
-
+  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) (-i <BJDNS2_SERVER_IP>) [-d <DIRECT_DNS_SERVER>] [-b <LISTEN_IP_PORT>]
 
 Examples:
   bjdns2_client.py -s "https://your.domain.name:your_port" -i "127.0.0.1" -d "119.29.29.29"
-  bjdns2_client.py -c "config.json"
 
 Options:
   -h --help             Show this screen
   -s BJDNS2_SERVER_ADDR bjdns2 server address
   -i BJDNS2_SERVER_IP   bjdns2 server ip
   -d DIRECT_DNS_SERVER  dns server, be used when query type is not A
-  -l LISTEN_IP_PORT     listen ip and port
-  -c CONFIG_FILE        path to config file
+  -b LISTEN_IP_PORT     listen ip and port
 """
 
 from docopt import docopt
@@ -29,7 +25,7 @@ from struct import (
 from gevent import (
     socket,
     monkey,
-    spawn,
+    # spawn,
 )
 from urllib.parse import urlparse
 from gevent.server import DatagramServer
@@ -38,7 +34,7 @@ from bjdns2 import resp_from_json
 from utils import (
     log,
     is_private_ip,
-    config,
+    # config,
 )
 monkey.patch_all()
 import requests
@@ -184,15 +180,15 @@ class Bjdns2:
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    if args['-c']:
-        cfg = config(args['-c']).get('client')
-        bjdns2_url, bjdns2_ip = cfg['bjdns2_url'], cfg['bjdns2_ip']
-        direct_dns_serv = cfg.get('direct_dns_server')
-        listen = cfg.get("listen")
-    else:
-        bjdns2_url, bjdns2_ip = args['-s'], args['-i']
-        direct_dns_serv = args.get('-d')
-        listen = args.get('-l')
+    # if args['-c']:
+    #     cfg = config(args['-c']).get('client')
+    #     bjdns2_url, bjdns2_ip = cfg['bjdns2_url'], cfg['bjdns2_ip']
+    #     direct_dns_serv = cfg.get('direct_dns_server')
+    #     listen = cfg.get("listen")
+    # else:
+    bjdns2_url, bjdns2_ip = args['-s'], args['-i']
+    direct_dns_serv = args.get('-d')
+    listen = args.get('-l')
 
     if not direct_dns_serv:
         direct_dns_serv = '119.29.29.29'
