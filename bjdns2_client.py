@@ -3,15 +3,14 @@
 """bjdns2_client.py
 
 Usage:
-  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) (-i <BJDNS2_SERVER_IP>) [-d <DIRECT_DNS_SERVER>] [-b <LISTEN_IP_PORT>]
+  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) [-d <DIRECT_DNS_SERVER>] [-b <LISTEN_IP_PORT>]
 
 Examples:
-  bjdns2_client.py -s "https://your.domain.name:your_port" -i "127.0.0.1" -d "119.29.29.29"
+  bjdns2_client.py -s "https://your.domain.name:your_port" -d "119.29.29.29"
 
 Options:
   -h --help             Show this screen
   -s BJDNS2_SERVER_ADDR bjdns2 server address
-  -i BJDNS2_SERVER_IP   bjdns2 server ip
   -d DIRECT_DNS_SERVER  dns server, be used when query type is not A
   -b LISTEN_IP_PORT     listen ip and port
 """
@@ -66,39 +65,43 @@ def parse_query(data):
 
 def make_data(data, ip, ttl):
     # data is request
-    (id, flags, quests,
-     answers, author, addition) = unpack('>HHHHHH', data[0:12])
-    flags_new = 33152
-    answers_new = 1
-    res = pack('>HHHHHH', id, flags_new, quests,
-               answers_new, author, addition)
+    if ip:
+        (id, flags, quests,
+         answers, author, addition) = unpack('>HHHHHH', data[0:12])
+        flags_new = 33152
+        answers_new = 1
+        res = pack('>HHHHHH', id, flags_new, quests,
+                   answers_new, author, addition)
 
-    res += data[12:]
+        res += data[12:]
 
-    dns_answer = {
-        'name': 49164,
-        'type': 1,
-        'classify': 1,
-        'ttl': ttl,
-        'datalength': 4
+        dns_answer = {
+            'name': 49164,
+            'type': 1,
+            'classify': 1,
+            'ttl': ttl,
+            'datalength': 4
         }
-    res += pack('>HHHLH',
-                dns_answer['name'],
-                dns_answer['type'],
-                dns_answer['classify'],
-                dns_answer['ttl'],
-                dns_answer['datalength'])
+        res += pack('>HHHLH',
+                    dns_answer['name'],
+                    dns_answer['type'],
+                    dns_answer['classify'],
+                    dns_answer['ttl'],
+                    dns_answer['datalength'])
 
-    ip = ip.split('.')
-    ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
-                    int(ip[2]), int(ip[3]))
+        ip = ip.split('.')
+        ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
+                        int(ip[2]), int(ip[3]))
 
-    res += ip_bytes
-    return res
+        res += ip_bytes
+        return res
+
+    else:
+        return b''
 
 
 class Bjdns2:
-    def __init__(self, listen, bjdns2_url, bjdns2_ip):
+    def __init__(self, listen, bjdns2_url):
         self.cache = Cache()
 
         ip, port_str = listen.split(':')
@@ -107,69 +110,74 @@ class Bjdns2:
 
         url = urlparse(bjdns2_url).netloc
         self.bjdns2_host = url[:url.rfind(':')]
-        self.bjdns2_ip = bjdns2_ip
+        # self.bjdns2_ip = bjdns2_ip
 
     def query_by_https(self, host, cli_ip):
         url_template = bjdns2_url + '/?dn={}&ip={}'
 
-        if host == self.bjdns2_host:
-            return self.bjdns2_ip, 3600
+        # if host == self.bjdns2_host:
+        #     return self.bjdns2_ip, 3600
 
+        # else:
+        if is_private_ip(cli_ip):
+            url = url_template.format(host, '')
         else:
-            if is_private_ip(cli_ip):
-                url = url_template.format(host, '')
-            else:
-                url = url_template.format(host, cli_ip)
+            url = url_template.format(host, cli_ip)
 
-            # try:
-            r = self.session.get(url)
-            # except Exception as e:
-            #     log('Requests error:', e)
-                # return '', 0
-            # else:
-            # if r.status_code == 200:
-            result = json.loads(r.text)
-            if result['Status'] == 0:
-                self.cache.write(cli_ip, result)
-                ip, ttl = resp_from_json(result)
-                return ip, ttl
-            else:
-                return '', 0
+        r = self.session.get(url)
+        result = json.loads(r.text)
+        if result['Status'] == 0:
+            self.cache.write(cli_ip, result['Question'][0], result, None)
+            ip, ttl = resp_from_json(result)
+            return ip, ttl
+        else:
+            return '', 0
 
-    def query(self, data, host, cli_addr) -> bytes:
+    def query(self, data, host, q_type, cli_addr) -> bytes:
         src_ip, _ = cli_addr
-        question = dict(name=host, type=1)
-        resp = self.cache.select(src_ip, question)
+        question = dict(name=host, type=q_type)
+        cache_resp = self.cache.select(src_ip, question)
 
-        if resp:
-            ip, ttl = resp_from_json(resp)
-            log(cli_addr, '[cache]', host, ip, '(ttl:{})'.format(ttl))
+        if cache_resp:
+            if host == self.bjdns2_host or q_type != 1:
+                resp = data[:2] + cache_resp
+                log(cli_addr, '[cache]', '[Type:{}]'.format(q_type), host)
+            else:
+                ip, ttl = resp_from_json(cache_resp)
+                log(cli_addr, '[cache]', host, ip, '(ttl:{})'.format(ttl))
+                resp = make_data(data, ip, ttl)
 
         else:
-            ip, ttl = self.query_by_https(host, src_ip)
-            log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
+            if host == self.bjdns2_host or q_type != 1:
+                resp = query_by_udp(data)
+                self.cache.write(src_ip, question, None, resp[2:])
+                log(cli_addr, '[Type:{}]'.format(q_type), host)
 
-        if ip:
-            return make_data(data, ip, ttl)
-        else:
-            return b''
+            else:
+                ip, ttl = self.query_by_https(host, src_ip)
+                log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
+                resp = make_data(data, ip, ttl)
+
+        # if ip:
+        # log(data, resp)
+        return resp
+        # else:
+        #     return b''
 
     def handle(self, data, cli_addr):
-        host, type = parse_query(data)
-        if type == 1:
-            try:
-                resp = self.query(data, host, cli_addr)
-            except Exception as e:
-                log(e)
-                resp = b''
+        host, q_type = parse_query(data)
 
-        else:
-            if host == self.bjdns2_host and type == 28:
-                log(host, type)
-                resp = data
-            else:
-                resp = query_by_udp(data)
-            log(cli_addr, '[Type:{}]'.format(type), host)
+        # if host == self.bjdns2_host or type != 1:
+        #     log(host, type)
+        #     resp = query_by_udp(data)
+        #     log(cli_addr, '[Type:{}]'.format(type), host)
+
+        # elif type == 1:
+        try:
+            resp = self.query(data, host, q_type, cli_addr)
+        except Exception as e:
+            log(e)
+            resp = b''
 
         self.server.sendto(resp, cli_addr)
 
@@ -186,7 +194,7 @@ if __name__ == '__main__':
     #     direct_dns_serv = cfg.get('direct_dns_server')
     #     listen = cfg.get("listen")
     # else:
-    bjdns2_url, bjdns2_ip = args['-s'], args['-i']
+    bjdns2_url = args['-s']
     direct_dns_serv = args.get('-d')
     listen = args.get('-l')
 
@@ -195,10 +203,10 @@ if __name__ == '__main__':
     if not listen:
         listen = '0.0.0.0:53'
 
-    print('bjdns2 client start.')
-    print('bjdns2 server:', bjdns2_url, bjdns2_ip)
-    print('direct dns server:', direct_dns_serv)
-    print('listen:', listen)
-    print()
-    bjdns2 = Bjdns2(listen, bjdns2_url, bjdns2_ip)
+    log('bjdns2 client start.')
+    log('bjdns2 server:', bjdns2_url)
+    log('direct dns server:', direct_dns_serv)
+    log('listen:', listen)
+    # log()
+    bjdns2 = Bjdns2(listen, bjdns2_url)
     bjdns2.start()

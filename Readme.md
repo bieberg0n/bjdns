@@ -30,21 +30,20 @@ $ sudo pip3 install -r requirements.txt
 ```
 $ python3 bjdns2_client.py -h
 Usage:
-  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) (-i <BJDNS2_SERVER_IP>) [-d <DIRECT_DNS_SERVER>] [-b <LISTEN_IP_PORT>]
+  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) [-d <DIRECT_DNS_SERVER>] [-b <LISTEN_IP_PORT>]
 
 Examples:
-  bjdns2_client.py -s "https://your.domain.name:your_port" -i "127.0.0.1" -d "119.29.29.29"
+  bjdns2_client.py -s "https://your.domain.name:your_port" -d "119.29.29.29"
 
 Options:
   -h --help             Show this screen
   -s BJDNS2_SERVER_ADDR bjdns2 server address
-  -i BJDNS2_SERVER_IP   bjdns2 server ip
   -d DIRECT_DNS_SERVER  dns server, be used when query type is not A
   -b LISTEN_IP_PORT     listen ip and port
 ```
 You can use my bjdns2 server directly:
 ```
-$ sudo python3 bjdns2_client.py -s "https://go.bjong.me:5353" -i "116.196.98.219"
+$ sudo python3 bjdns2_client.py -s "https://go.bjong.me:5353"
 ```
 
 5. Test:
