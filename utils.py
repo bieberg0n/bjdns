@@ -12,6 +12,18 @@ def log(*args):
         print(time.strftime('%Y-%m-%d %H:%M:%S'), *args)
 
 
+def resp_from_json(json_str: dict):
+    j = json_str
+    if not j.get('Answer'):
+        return '', 0
+    else:
+        for a in j['Answer']:
+            if a.get('type') == 1:
+                return a['data'], a['TTL']
+        else:
+            return '', 0
+
+
 def is_private_ip(ip):
     if ip == '' or ip == '1' or ip.startswith('127'):
         return True

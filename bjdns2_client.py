@@ -29,9 +29,9 @@ from gevent import (
 from urllib.parse import urlparse
 from gevent.server import DatagramServer
 from cache import Cache
-from bjdns2 import resp_from_json
 from utils import (
     log,
+    resp_from_json,
     is_private_ip,
     # config,
 )

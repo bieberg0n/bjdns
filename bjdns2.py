@@ -14,8 +14,9 @@ from flask import (
 )
 from utils import (
     log,
+    resp_from_json,
     is_private_ip,
-    config,
+    # config,
 )
 from cache import Cache
 import config
@@ -29,18 +30,6 @@ def whitelist():
         txt = f.read()
     d = json.loads(txt)
     return d
-
-
-def resp_from_json(json_str: dict):
-    j = json_str
-    if not j.get('Answer'):
-        return '', 0
-    else:
-        for a in j['Answer']:
-            if a.get('type') == 1:
-                return a['data'], a['TTL']
-        else:
-            return '', 0
 
 
 def make_resp(name, ip, ttl):
