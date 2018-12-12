@@ -14,6 +14,7 @@ from flask import (
 )
 from utils import (
     log,
+    dlog,
     resp_from_json,
     is_private_ip,
     # config,
@@ -86,7 +87,7 @@ class Query:
             'https': 'socks5h://127.0.0.1:1080'
             }
 
-    def _cn_query(self, cn_host, client_ip) -> map:
+    def cn_query(self, cn_host, client_ip) -> map:
         url_template = 'http://119.29.29.29/d?dn={}&ip={}'
         if is_private_ip(client_ip):
             url = url_template.format(cn_host, '')
@@ -98,10 +99,16 @@ class Query:
         ttl = 3600
         return make_resp(cn_host, ip, ttl)
 
-    def _foreign_query(self, name, type) -> map:
-        url = 'https://1.1.1.1/dns-query?ct=application/dns-json&name={}&type={}'
-        r = self.s_proxy.get(url.format(name, type))
-        return json.loads(r.text)
+    def foreign_query(self, name, dns_type) -> map:
+        try:
+            url = 'https://1.1.1.1/dns-query?ct=application/dns-json&name={}&type={}'
+            r = self.s_proxy.get(url.format(name, dns_type), timeout=2)
+        except Exception as e:
+            log(e)
+            url = 'https://8.8.8.8/resolve?name={}&type={}'
+            r = self.s_proxy.get(url.format(name, dns_type), verify=False)
+        finally:
+            return json.loads(r.text)
 
     def query(self, question: map, src_ip: str) -> map:
         name, dns_type = question['name'], question['type']
@@ -114,12 +121,13 @@ class Query:
         resp = self.cache.select(src_ip, question)
         if not resp:
             if cn_flag and dns_type in (1, '1', 'A'):
-                resp = self._cn_query(name, src_ip)
+                resp = self.cn_query(name, src_ip)
             else:
-                resp = self._foreign_query(name, dns_type)
+                resp = self.foreign_query(name, dns_type)
 
             if resp['Status'] == 0:
-                self.cache.write(src_ip, resp)
+                dlog('src ip:', src_ip, 'resp:', resp)
+                self.cache.write(src_ip, question, resp, b'')
 
             cache_flag = ''
 
@@ -154,39 +162,19 @@ def index():
     if host:
         cli_ip = cli_ip if cli_ip else request.remote_addr.split(':')[-1]
         question = dict(name=host, type=dns_type)
-        try:
-            resp = bjdns.bjdns(question, cli_ip)
-        except Exception as e:
-            log(e)
-            resp = make_resp('', '', 0)
-        finally:
-            return json.dumps(resp).encode()
+        # try:
+        resp = bjdns.bjdns(question, cli_ip)
+        # except Exception as e:
+        # log(e)
+        # resp = make_resp('', '', 0)
+        # finally:
+        return json.dumps(resp).encode()
     else:
         return 'BJDNS'
 
 
-# cfg = config('config.json').get('server')
-# by_proxy = cfg['proxy']
 bjdns = Bjdns(config.by_proxy)
 
 
 if __name__ == '__main__':
-    # log(cfg)
-    # keyfile = cfg['keyfile']
-    # certfile = cfg['certfile']
-
-
-    # if keyfile:
-    #     WSGIServer(
-    #         (cfg['listen_ip'], cfg['listen_port']),
-    #         app,
-    #         keyfile=keyfile,
-    #         certfile=certfile,
-    #         ssl_version=ssl.PROTOCOL_TLSv1_2
-    #     ).serve_forever()
-    # else:
-    #     WSGIServer(
-    #         (cfg['listen_ip'], cfg['listen_port']),
-    #         app,
-    #     ).serve_forever()
     app.run(debug=True)

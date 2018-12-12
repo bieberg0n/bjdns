@@ -3,6 +3,7 @@ import time
 import json
 import struct
 import socket
+import config
 
 
 def log(*args):
@@ -10,6 +11,11 @@ def log(*args):
         pprint.pprint(*args)
     else:
         print(time.strftime('%Y-%m-%d %H:%M:%S'), *args)
+
+
+def dlog(*args):
+    if config.debug:
+        log(*args)
 
 
 def resp_from_json(json_str: dict):
@@ -46,8 +52,8 @@ def is_private_ip(ip):
         return False
 
 
-def config(config_file):
-    with open(config_file) as f:
-        txt = f.read()
-    cfg = json.loads(txt)
-    return cfg
+# def config(config_file):
+#     with open(config_file) as f:
+#         txt = f.read()
+#     cfg = json.loads(txt)
+#     return cfg
