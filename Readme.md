@@ -65,7 +65,7 @@ $ nano config.py
 
 4. Run:
 ```
-$ gunicorn -c config.py bjdns2:app
+$ make run server
 ```
 
 5. Test:

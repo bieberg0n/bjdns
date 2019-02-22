@@ -67,7 +67,10 @@ def make_resp(name, ip, ttl):
 
 def is_cn_host(whitelist, host):
     h = [part for part in reversed(host.split('.')) if part]
-    if h[0] == 'cn':
+
+    if [h for h in config.white_list if host.endswith(h)]:
+        return True
+    elif h[0] == 'cn':
         return True
     elif len(h) > 1:
         return whitelist.get(h[0], {}).get(h[1]) == 1
@@ -103,11 +106,11 @@ class Query:
         try:
             url = 'https://1.1.1.1/dns-query?ct=application/dns-json&name={}&type={}'
             r = self.s_proxy.get(url.format(name, dns_type), timeout=2)
+            return json.loads(r.text)
         except Exception as e:
             log(e)
             url = 'https://8.8.8.8/resolve?name={}&type={}'
             r = self.s_proxy.get(url.format(name, dns_type), verify=False)
-        finally:
             return json.loads(r.text)
 
     def query(self, question: map, src_ip: str) -> map:
@@ -119,6 +122,7 @@ class Query:
             src_ip = '0.0.0.0'
 
         resp = self.cache.select(src_ip, question)
+        dlog('resp:', resp)
         if not resp:
             if cn_flag and dns_type in (1, '1', 'A'):
                 resp = self.cn_query(name, src_ip)
@@ -134,7 +138,11 @@ class Query:
         else:
             cache_flag = '[Cache] '
 
-        return resp, cache_flag
+        return {
+            'data': resp,
+            'cache_flag': cache_flag,
+            'cn_flag': '[cn] ' if cn_flag else '',
+        }
 
 
 class Bjdns:
@@ -142,15 +150,16 @@ class Bjdns:
         self.query = Query(by_proxy)
 
     def bjdns(self, question: map, src_ip: str) -> map:
-        name, dns_type = question['name'], question['type']
-        resp, cache_flag = self.query.query(question, src_ip)
-        if resp['Status'] == 0:
-            data, ttl = resp_from_json(resp)
-            log('{0} {1} {2}{3} (ttl: {4})'.format(src_ip, name, cache_flag, data, ttl))
+        # name, dns_type = question['name'], question['type']
+        name = question['name']
+        resp = self.query.query(question, src_ip)
+        if resp['data']['Status'] == 0:
+            data, ttl = resp_from_json(resp['data'])
+            log('{0} {1} {2}{3}{4} (ttl: {5})'.format(src_ip, name, resp['cn_flag'], resp['cache_flag'], data, ttl))
         else:
             log('{} {}'.format(src_ip, name))
 
-        return resp
+        return resp['data']
 
 
 @app.route('/', methods=['GET'])
@@ -177,4 +186,4 @@ bjdns = Bjdns(config.by_proxy)
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5353)

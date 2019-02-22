@@ -7,15 +7,18 @@ import config
 
 
 def log(*args):
-    if len(args) == 1:
-        pprint.pprint(*args)
-    else:
-        print(time.strftime('%Y-%m-%d %H:%M:%S'), *args)
+    # if len(args) == 1:
+    #     pprint.pprint(*args)
+    # else:
+    print(time.strftime('%Y-%m-%d %H:%M:%S'), *args)
 
 
 def dlog(*args):
     if config.debug:
-        log(*args)
+        if len(args) == 1:
+            pprint.pprint(*args)
+        else:
+            print(*args)
 
 
 def resp_from_json(json_str: dict):
