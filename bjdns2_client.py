@@ -30,6 +30,7 @@ from urllib.parse import urlparse
 from gevent.server import DatagramServer
 from cache import Cache
 from utils import (
+    dlog,
     log,
     resp_from_json,
     is_private_ip,
@@ -109,7 +110,11 @@ class Bjdns2:
         self.session = requests.Session()
 
         url = urlparse(bjdns2_url).netloc
-        self.bjdns2_host = url[:url.rfind(':')]
+        if ':' in url:
+            self.bjdns2_host = url[:url.rfind(':')]
+        else:
+            self.bjdns2_host = url
+        dlog('host:', bjdns2_url, self.bjdns2_host)
 
     def query_by_https(self, host, cli_ip):
         url_template = bjdns2_url + '/?dn={}&ip={}'
