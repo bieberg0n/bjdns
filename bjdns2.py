@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 
 import json
-# from gevent import (
-#     monkey,
-#     ssl,
-# )
-# monkey.patch_all()
-# from gevent.pywsgi import WSGIServer
 import requests
 from flask import (
     Flask,
@@ -17,9 +11,9 @@ from utils import (
     dlog,
     resp_from_json,
     is_private_ip,
-    # config,
 )
 from cache import Cache
+import ipincn
 import config
 
 
@@ -33,7 +27,7 @@ def whitelist():
     return d
 
 
-def make_resp(name, ip, ttl):
+def make_resp_data(name, ip, ttl):
     if not name.endswith('.'):
         name += '.'
 
@@ -65,23 +59,22 @@ def make_resp(name, ip, ttl):
     return resp
 
 
-def is_cn_host(whitelist, host):
-    h = [part for part in reversed(host.split('.')) if part]
+def make_resp(data, cache_flag, cn_flag):
+    cache_msg = '[Cache] ' if cache_flag else ''
+    cn_msg = '[cn] ' if cn_flag else ''
 
-    if [h for h in config.white_list if host.endswith(h)]:
-        return True
-    elif h[0] == 'cn':
-        return True
-    elif len(h) > 1:
-        return whitelist.get(h[0], {}).get(h[1]) == 1
-    else:
-        return False
+    return {
+        'data': data,
+        'cache_flag': cache_msg,
+        'cn_flag': cn_msg,
+    }
 
 
 class Query:
     def __init__(self, by_proxy):
         self.cache = Cache()
-        self.wl = whitelist()
+        self.whitelist = whitelist()
+        self.ip_in_cn = ipincn.ip_in_cn_gen()
         self.s_cn = requests.session()
         self.s_proxy = requests.session()
         if by_proxy:
@@ -90,7 +83,19 @@ class Query:
             'https': 'socks5h://127.0.0.1:1080'
             }
 
-    def cn_query(self, cn_host, client_ip) -> map:
+    def is_cn_host(self, host):
+        h = [part for part in reversed(host.split('.')) if part]
+
+        if [h for h in config.white_list if host.endswith(h)]:
+            return True
+        elif h[0] == 'cn':
+            return True
+        elif len(h) > 1:
+            return self.whitelist.get(h[0], {}).get(h[1]) == 1
+        else:
+            return False
+
+    def cn_query_ip(self, cn_host, client_ip) -> str:
         url_template = 'http://119.29.29.29/d?dn={}&ip={}'
         if is_private_ip(client_ip):
             url = url_template.format(cn_host, '')
@@ -98,9 +103,16 @@ class Query:
             url = url_template.format(cn_host, client_ip)
         r = self.s_cn.get(url)
         result = r.text.split(';')[0]
-        ip = result if result else ''
+
+        if result:
+            return result
+        else:
+            return ''
+
+    def cn_query(self, cn_host, client_ip) -> map:
+        ip = self.cn_query_ip(cn_host, client_ip)
         ttl = 3600
-        return make_resp(cn_host, ip, ttl)
+        return make_resp_data(cn_host, ip, ttl)
 
     def foreign_query(self, name, dns_type) -> map:
         try:
@@ -113,36 +125,36 @@ class Query:
             r = self.s_proxy.get(url.format(name, dns_type), verify=False)
             return json.loads(r.text)
 
+    def save(self, src_ip, question, data):
+        if data['Status'] == 0:
+            dlog('src ip:', src_ip, 'data:', data)
+            self.cache.write(src_ip, question, data, b'')
+
     def query(self, question: map, src_ip: str) -> map:
         name, dns_type = question['name'], question['type']
-        if is_cn_host(self.wl, name):
-            cn_flag = True
-        else:
-            cn_flag = False
-            src_ip = '0.0.0.0'
 
-        resp = self.cache.select(src_ip, question)
-        dlog('resp:', resp)
-        if not resp:
-            if cn_flag and dns_type in (1, '1', 'A'):
-                resp = self.cn_query(name, src_ip)
+        data = self.cache.select(src_ip, question)
+        dlog('resp:', data)
+        if data:
+            return make_resp(data, cache_flag=True, cn_flag=False)
+
+        elif self.is_cn_host(name) and dns_type in (1, '1', 'A'):
+            data = self.cn_query(name, src_ip)
+            resp = make_resp(data, cache_flag=False, cn_flag=True)
+
+        else:
+            ip = self.cn_query_ip(name, src_ip)
+            dlog('IP:', ip)
+            is_cn_ip = self.ip_in_cn(ip) if ip else False
+            if (not ip) or is_cn_ip:
+                data = make_resp_data(name, ip, 3600)
+                resp = make_resp(data, cache_flag=False, cn_flag=True)
             else:
-                resp = self.foreign_query(name, dns_type)
+                data = self.foreign_query(name, dns_type)
+                resp = make_resp(data, cache_flag=False, cn_flag=False)
 
-            if resp['Status'] == 0:
-                dlog('src ip:', src_ip, 'resp:', resp)
-                self.cache.write(src_ip, question, resp, b'')
-
-            cache_flag = ''
-
-        else:
-            cache_flag = '[Cache] '
-
-        return {
-            'data': resp,
-            'cache_flag': cache_flag,
-            'cn_flag': '[cn] ' if cn_flag else '',
-        }
+        self.save(src_ip, question, data)
+        return resp
 
 
 class Bjdns:
@@ -150,7 +162,6 @@ class Bjdns:
         self.query = Query(by_proxy)
 
     def bjdns(self, question: map, src_ip: str) -> map:
-        # name, dns_type = question['name'], question['type']
         name = question['name']
         resp = self.query.query(question, src_ip)
         if resp['data']['Status'] == 0:
@@ -171,12 +182,7 @@ def index():
     if host:
         cli_ip = cli_ip if cli_ip else request.remote_addr.split(':')[-1]
         question = dict(name=host, type=dns_type)
-        # try:
         resp = bjdns.bjdns(question, cli_ip)
-        # except Exception as e:
-        # log(e)
-        # resp = make_resp('', '', 0)
-        # finally:
         return json.dumps(resp).encode()
     else:
         return 'BJDNS'

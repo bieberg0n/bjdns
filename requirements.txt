@@ -4,3 +4,4 @@ flask
 docopt
 PySocks
 gunicorn
+IPy
