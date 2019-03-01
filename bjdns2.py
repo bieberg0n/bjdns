@@ -176,11 +176,15 @@ class Bjdns:
 @app.route('/', methods=['GET'])
 def index():
     host = request.args.get('dn')
-    cli_ip = request.args.get('ip')
+    cli_ips = [
+        request.args.get('ip'),
+        request.headers.get('X-Forwarded-For'),
+        request.remote_addr.split(':')[-1]
+    ]
+    cli_ip, *_ = [ip for ip in cli_ips if ip]
     dns_type = int(request.args.get('type', 1))
 
     if host:
-        cli_ip = cli_ip if cli_ip else request.remote_addr.split(':')[-1]
         question = dict(name=host, type=dns_type)
         resp = bjdns.bjdns(question, cli_ip)
         return json.dumps(resp).encode()

@@ -110,15 +110,10 @@ class Bjdns2:
 
         url = urlparse(bjdns2_url).netloc
         self.bjdns2_host = url[:url.rfind(':')]
-        # self.bjdns2_ip = bjdns2_ip
 
     def query_by_https(self, host, cli_ip):
         url_template = bjdns2_url + '/?dn={}&ip={}'
 
-        # if host == self.bjdns2_host:
-        #     return self.bjdns2_ip, 3600
-
-        # else:
         if is_private_ip(cli_ip):
             url = url_template.format(host, '')
         else:
@@ -158,21 +153,11 @@ class Bjdns2:
                 log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
                 resp = make_data(data, ip, ttl)
 
-        # if ip:
-        # log(data, resp)
         return resp
-        # else:
-        #     return b''
 
     def handle(self, data, cli_addr):
         host, q_type = parse_query(data)
 
-        # if host == self.bjdns2_host or type != 1:
-        #     log(host, type)
-        #     resp = query_by_udp(data)
-        #     log(cli_addr, '[Type:{}]'.format(type), host)
-
-        # elif type == 1:
         try:
             resp = self.query(data, host, q_type, cli_addr)
         except Exception as e:
@@ -188,12 +173,6 @@ class Bjdns2:
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    # if args['-c']:
-    #     cfg = config(args['-c']).get('client')
-    #     bjdns2_url, bjdns2_ip = cfg['bjdns2_url'], cfg['bjdns2_ip']
-    #     direct_dns_serv = cfg.get('direct_dns_server')
-    #     listen = cfg.get("listen")
-    # else:
     bjdns2_url = args['-s']
     direct_dns_serv = args.get('-d')
     listen = args.get('-l')
@@ -207,6 +186,5 @@ if __name__ == '__main__':
     log('bjdns2 server:', bjdns2_url)
     log('direct dns server:', direct_dns_serv)
     log('listen:', listen)
-    # log()
     bjdns2 = Bjdns2(listen, bjdns2_url)
     bjdns2.start()
