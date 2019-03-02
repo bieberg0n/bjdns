@@ -7,7 +7,7 @@ bjdns2 is divided into server and client：
 * The client runs locally, connects to the server over HTTP (S) and initiates the request.  
 
 ## Usage  
-I have set up a bjdns2 server on go.bjong.me:5353. So you can just run bjdns2 client to try it.  
+I have set up a bjdns2 server on dns.bjong.me. So you can just run bjdns2 client to try it.  
 
 ### Client:
 1. Install Python3:
@@ -43,7 +43,7 @@ Options:
 ```
 You can use my bjdns2 server directly:
 ```
-$ sudo python3 bjdns2_client.py -s "https://go.bjong.me:5353"
+$ sudo python3 bjdns2_client.py -s "https://dns.bjong.me"
 ```
 
 5. Test:
@@ -78,4 +78,4 @@ curl https://your.domain.name/?dn=twitter.com
 The **whitelist.json** file is modified from the file in [breakwa11](https://github.com/breakwa11)'s [gfw_whitelist](https://github.com/breakwa11/gfw_whitelist) project. The project uses the [MIT](https://github.com/breakwa11/gfw_whitelist/blob/master/LICENSE) license.  
 
 ## License (GNU GPL3.0)  
-Copyright (c) 2017-2018 bjong
+Copyright (c) 2017-2019 bjong
