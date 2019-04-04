@@ -55,8 +55,21 @@ def is_private_ip(ip):
         return False
 
 
-# def config(config_file):
-#     with open(config_file) as f:
-#         txt = f.read()
-#     cfg = json.loads(txt)
-#     return cfg
+class CnHostChecker:
+    def __init__(self):
+        with open('whitelist.json') as f:
+            txt = f.read()
+        self.whitelist = json.loads(txt)
+
+    def is_cn_host(self, host):
+        h = [part for part in reversed(host.split('.')) if part]
+
+        if [h for h in config.white_list if host.endswith(h)]:
+            return True
+        elif h[0] == 'cn':
+            return True
+        elif len(h) > 1:
+            return self.whitelist.get(h[0], {}).get(h[1]) == 1
+        else:
+            return False
+

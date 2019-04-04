@@ -11,6 +11,7 @@ from utils import (
     dlog,
     resp_from_json,
     is_private_ip,
+    CnHostChecker,
 )
 from cache import Cache
 import ipincn
@@ -18,13 +19,6 @@ import config
 
 
 app = Flask(__name__)
-
-
-def whitelist():
-    with open('whitelist.json') as f:
-        txt = f.read()
-    d = json.loads(txt)
-    return d
 
 
 def make_resp_data(name, ip, ttl):
@@ -73,7 +67,7 @@ def make_resp(data, cache_flag, cn_flag):
 class Query:
     def __init__(self, by_proxy):
         self.cache = Cache()
-        self.whitelist = whitelist()
+        self.cn_host_checker = CnHostChecker()
         self.ip_in_cn = ipincn.ip_in_cn_gen()
         self.s_cn = requests.session()
         self.s_proxy = requests.session()
@@ -83,19 +77,8 @@ class Query:
             'https': 'socks5h://127.0.0.1:1080'
             }
 
-    def is_cn_host(self, host):
-        h = [part for part in reversed(host.split('.')) if part]
-
-        if [h for h in config.white_list if host.endswith(h)]:
-            return True
-        elif h[0] == 'cn':
-            return True
-        elif len(h) > 1:
-            return self.whitelist.get(h[0], {}).get(h[1]) == 1
-        else:
-            return False
-
     def cn_query_ip(self, cn_host, client_ip) -> str:
+        dlog('query ip to cn')
         url_template = 'http://119.29.29.29/d?dn={}&ip={}'
         if is_private_ip(client_ip):
             url = url_template.format(cn_host, '')
@@ -110,20 +93,29 @@ class Query:
             return ''
 
     def cn_query(self, cn_host, client_ip) -> map:
+        dlog('query to cn')
         ip = self.cn_query_ip(cn_host, client_ip)
         ttl = 3600
         return make_resp_data(cn_host, ip, ttl)
 
+    def query_google(self, name, dns_type, client_ip=''):
+        dlog('query to google')
+        url = 'https://8.8.8.8/resolve?name={}&type={}'.format(name, dns_type)
+        if client_ip:
+            url = url + '&edns_client_subnet=' + client_ip
+        dlog('url:', url)
+        r = self.s_proxy.get(url)
+        return json.loads(r.text)
+
     def foreign_query(self, name, dns_type) -> map:
+        dlog('query to cloudflare')
         try:
             url = 'https://1.1.1.1/dns-query?ct=application/dns-json&name={}&type={}'
             r = self.s_proxy.get(url.format(name, dns_type), timeout=2)
             return json.loads(r.text)
         except Exception as e:
             log(e)
-            url = 'https://8.8.8.8/resolve?name={}&type={}'
-            r = self.s_proxy.get(url.format(name, dns_type), verify=False)
-            return json.loads(r.text)
+            return self.query_google(self, name, dns_type)
 
     def save(self, src_ip, question, data):
         if data['Status'] == 0:
@@ -138,9 +130,14 @@ class Query:
         if data:
             return make_resp(data, cache_flag=True, cn_flag=False)
 
-        elif self.is_cn_host(name) and dns_type in (1, '1', 'A'):
-            data = self.cn_query(name, src_ip)
-            resp = make_resp(data, cache_flag=False, cn_flag=True)
+        elif self.cn_host_checker.is_cn_host(name) and dns_type in (1, '1', 'A'):
+            try:
+                data = self.cn_query(name, src_ip)
+            except Exception as e:
+                log('cn query error:', e)
+                data = self.query_google(name, dns_type, src_ip)
+            finally:
+                resp = make_resp(data, cache_flag=False, cn_flag=True)
 
         else:
             ip = self.cn_query_ip(name, src_ip)
