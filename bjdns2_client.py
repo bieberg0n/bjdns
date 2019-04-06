@@ -3,7 +3,7 @@
 """bjdns2_client.py
 
 Usage:
-  bjdns2_client.py (-s <BJDNS2_SERVER_ADDR>) [-d <DIRECT_DNS_SERVER>] [-b <LISTEN_IP_PORT>]
+  bjdns2_client.py [--debug] (-s <BJDNS2_SERVER_ADDR>) [-d <DIRECT_DNS_SERVER>] [-b <LISTEN_IP_PORT>]
 
 Examples:
   bjdns2_client.py -s "https://your.domain.name:your_port" -d "119.29.29.29"
@@ -13,6 +13,7 @@ Options:
   -s BJDNS2_SERVER_ADDR bjdns2 server address
   -d DIRECT_DNS_SERVER  dns server, be used when query type is not A
   -b LISTEN_IP_PORT     listen ip and port
+  --debug               debug mode
 """
 
 from docopt import docopt
@@ -30,8 +31,8 @@ from urllib.parse import urlparse
 from gevent.server import DatagramServer
 from cache import Cache
 from utils import (
-    dlog,
-    log,
+    empty,
+    info,
     resp_from_json,
     is_private_ip,
     # config,
@@ -47,7 +48,7 @@ def query_by_udp(data):
     try:
         res = s.recv(512)
     except socket.timeout as e:
-        log('query special type:', e)
+        info('query special type:', e)
         return b''
     else:
         return res
@@ -114,7 +115,7 @@ class Bjdns2:
             self.bjdns2_host = url[:url.rfind(':')]
         else:
             self.bjdns2_host = url
-        dlog('host:', bjdns2_url, self.bjdns2_host)
+        log('host:', bjdns2_url, self.bjdns2_host)
 
     def query_by_https(self, host, cli_ip):
         url_template = bjdns2_url + '/?dn={}&ip={}'
@@ -141,21 +142,21 @@ class Bjdns2:
         if cache_resp:
             if host == self.bjdns2_host or q_type != 1:
                 resp = data[:2] + cache_resp
-                log(cli_addr, '[cache]', '[Type:{}]'.format(q_type), host)
+                info(cli_addr, '[cache]', '[Type:{}]'.format(q_type), host)
             else:
                 ip, ttl = resp_from_json(cache_resp)
-                log(cli_addr, '[cache]', host, ip, '(ttl:{})'.format(ttl))
+                info(cli_addr, '[cache]', host, ip, '(ttl:{})'.format(ttl))
                 resp = make_data(data, ip, ttl)
 
         else:
             if host == self.bjdns2_host or q_type != 1:
                 resp = query_by_udp(data)
                 self.cache.write(src_ip, question, None, resp[2:])
-                log(cli_addr, '[Type:{}]'.format(q_type), host)
+                info(cli_addr, '[Type:{}]'.format(q_type), host)
 
             else:
                 ip, ttl = self.query_by_https(host, src_ip)
-                log(cli_addr, host, ip, '(ttl:{})'.format(ttl))
+                info(cli_addr, host, ip, '(ttl:{})'.format(ttl))
                 resp = make_data(data, ip, ttl)
 
         return resp
@@ -166,7 +167,7 @@ class Bjdns2:
         try:
             resp = self.query(data, host, q_type, cli_addr)
         except Exception as e:
-            log(e)
+            info(e)
             resp = b''
 
         self.server.sendto(resp, cli_addr)
@@ -181,15 +182,21 @@ if __name__ == '__main__':
     bjdns2_url = args['-s']
     direct_dns_serv = args.get('-d')
     listen = args.get('-l')
+    debug_mode = args.get('--debug')
+
+    if debug_mode:
+        log = info
+    else:
+        log = empty
 
     if not direct_dns_serv:
         direct_dns_serv = '119.29.29.29'
     if not listen:
         listen = '0.0.0.0:53'
 
-    log('bjdns2 client start.')
-    log('bjdns2 server:', bjdns2_url)
-    log('direct dns server:', direct_dns_serv)
-    log('listen:', listen)
+    info('bjdns2 client start.')
+    info('bjdns2 server:', bjdns2_url)
+    info('direct dns server:', direct_dns_serv)
+    info('listen:', listen)
     bjdns2 = Bjdns2(listen, bjdns2_url)
     bjdns2.start()

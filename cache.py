@@ -1,5 +1,5 @@
 import time
-from utils import log
+from utils import info
 
 
 def host_add_dot(host):
@@ -53,7 +53,7 @@ class Cache:
 
             for ttl in ttls:
                 if now - value['mtime'] > ttl:
-                    log(question['name'], 'Need update')
+                    info(question['name'], 'Need update')
                     return None
             else:
                 return resp

@@ -3,22 +3,26 @@ import time
 import json
 import struct
 import socket
-import config
+# import config
 
 
-def log(*args):
+def empty(*args):
+    ...
+
+
+def info(*args):
     # if len(args) == 1:
     #     pprint.pprint(*args)
     # else:
     print(time.strftime('%Y-%m-%d %H:%M:%S'), *args)
 
 
-def dlog(*args):
-    if config.debug:
-        if len(args) == 1:
-            pprint.pprint(*args)
-        else:
-            print(*args)
+# def dlog(*args):
+    # if config.debug:
+    #     if len(args) == 1:
+    #         pprint.pprint(*args)
+    #     else:
+    #         print(*args)
 
 
 def resp_from_json(json_str: dict):
@@ -53,23 +57,3 @@ def is_private_ip(ip):
         if ip1 == ag:
             return True
         return False
-
-
-class CnHostChecker:
-    def __init__(self):
-        with open('whitelist.json') as f:
-            txt = f.read()
-        self.whitelist = json.loads(txt)
-
-    def is_cn_host(self, host):
-        h = [part for part in reversed(host.split('.')) if part]
-
-        if [h for h in config.white_list if host.endswith(h)]:
-            return True
-        elif h[0] == 'cn':
-            return True
-        elif len(h) > 1:
-            return self.whitelist.get(h[0], {}).get(h[1]) == 1
-        else:
-            return False
-
