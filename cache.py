@@ -12,24 +12,17 @@ class Cache:
     def __init__(self):
         self.cache = dict()
 
-    def write(self, src_ip: str, question: map, resp: map, data: bytes) -> None:
-        if resp and resp.get('Status') != 0:
-            return
-
-        # questions = resp.get('Question')
-
+    def write(self, src_ip: str, question: map, resp) -> None:
         if not self.cache.get(src_ip):
             self.cache[src_ip] = dict()
 
-        # for question in questions:
         q_type, name = question.get('type'), host_add_dot(question.get('name'))
         key = (q_type, name)
         self.cache[src_ip][key] = dict()
         self.cache[src_ip][key]['mtime'] = int(time.time())
-        if resp:
-            self.cache[src_ip][key]['response'] = resp
-        else:
-            self.cache[src_ip][key]['data'] = data
+
+        self.cache[src_ip][key]['data'] = resp.raw
+        self.cache[src_ip][key]['ttl'] = resp.ttl
 
     def select(self, src_ip: str, question: map):
         dns_type, name = question.get('type'), question.get('name')
@@ -47,8 +40,8 @@ class Cache:
                 ttls = [answer['TTL'] for answer in value['response']['Answer']]
                 resp = value['response']
             else:
-                ttls = [300]
                 resp = value['data']
+                ttls = [value['ttl']]
                 # log(answer, now - value['mtime'], answer['TTL'])
 
             for ttl in ttls:
