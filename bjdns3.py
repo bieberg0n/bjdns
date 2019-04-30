@@ -64,14 +64,14 @@ def query_by_tcp(dns_ip, req_data):
     data = pack('>H', len(req_data)) + req_data
 
     s = socket.socket()
-    s.settimeout(2)
+    # s.settimeout(2)
     s.connect((dns_ip, 53))
     s.sendall(data)
-    try:
-        res = s.recv(2048)
-    except socket.timeout as e:
-        info('query special type:', e)
-        return b''
+    # try:
+    res = s.recv(2048)
+    # except socket.timeout as e:
+    #     info('query by tcp:', e)
+    #     return b''
 
     s.close()
     if len(res) <= 2:
@@ -82,15 +82,15 @@ def query_by_tcp(dns_ip, req_data):
 
 def query_by_udp(dns_ip, raw_data):
     s = socket.socket(2, 2)
-    s.settimeout(2)
+    # s.settimeout(2)
     s.sendto(raw_data, (dns_ip, 53))
-    try:
-        res = s.recv(512)
-    except socket.timeout as e:
-        info('query special type:', e)
-        return b''
-    else:
-        return res
+    # try:
+    res = s.recv(512)
+    # except socket.timeout as e:
+    #     info('query by udp:', e)
+    #     return b''
+    # else:
+    return res
 
 
 def ip_from_resp(resp):
@@ -212,7 +212,7 @@ class Bjdns:
         url = 'https://1.1.1.1/dns-query?ct=application/dns-json&name={}&type=1'.format(req.domain_name)
         src_ip = req.src[0]
         try:
-            r = self.session.get(url)
+            r = self.session.get(url, timeout=5)
             result = json.loads(r.text)
             if result['Status'] == 0:
                 ip, ttl = resp_from_json(result)
@@ -250,17 +250,16 @@ class Bjdns:
             info(req.src, '[cache]', req.domain_name, resp.ip, '(ttl:{})'.format(resp.ttl))
             return make_data(req.raw_data, resp.ip, resp.ttl)
 
-        else:
-            if req.type == 1:
-                resp = self._query(req)
-                info(req.src, req.domain_name, resp.ip, '(ttl:{})'.format(resp.ttl))
-                return resp.raw
+        elif req.type == 1:
+            resp = self._query(req)
+            info(req.src, req.domain_name, resp.ip, '(ttl:{})'.format(resp.ttl))
+            return resp.raw
 
-            else:
-                info(req.src, '[Type:{}]'.format(req.type), req.domain_name)
-                resp = self.query_by_cn(req)
-                self.cache.write(src_ip, req.question, resp)
-                return resp.raw
+        else:
+            info(req.src, '[Type:{}]'.format(req.type), req.domain_name)
+            resp = self.query_by_cn(req)
+            self.cache.write(src_ip, req.question, resp)
+            return resp.raw
 
     def handle(self, data, cli_addr):
         req = DNSRequest(data, cli_addr)
