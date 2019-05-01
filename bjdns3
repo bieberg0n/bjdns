@@ -26,9 +26,7 @@ from struct import (
 from gevent import (
     socket,
     monkey,
-    # spawn,
 )
-# from urllib.parse import urlparse
 from gevent.server import DatagramServer
 from cache import Cache
 import ipincn
@@ -36,8 +34,6 @@ from utils import (
     empty,
     info,
     resp_from_json,
-    # is_private_ip,
-    # config,
 )
 monkey.patch_all()
 import requests
@@ -64,14 +60,9 @@ def query_by_tcp(dns_ip, req_data):
     data = pack('>H', len(req_data)) + req_data
 
     s = socket.socket()
-    # s.settimeout(2)
     s.connect((dns_ip, 53))
     s.sendall(data)
-    # try:
     res = s.recv(2048)
-    # except socket.timeout as e:
-    #     info('query by tcp:', e)
-    #     return b''
 
     s.close()
     if len(res) <= 2:
@@ -82,14 +73,8 @@ def query_by_tcp(dns_ip, req_data):
 
 def query_by_udp(dns_ip, raw_data):
     s = socket.socket(2, 2)
-    # s.settimeout(2)
     s.sendto(raw_data, (dns_ip, 53))
-    # try:
     res = s.recv(512)
-    # except socket.timeout as e:
-    #     info('query by udp:', e)
-    #     return b''
-    # else:
     return res
 
 
@@ -127,15 +112,11 @@ class DNSRequest:
 class DNSResponse:
     def __init__(self, record=None, ip='', ttl=0, q_data=b''):
         if record:
-            # self.ans = record
             self.raw = record.pack()
 
             rs = record.rr
             rs.extend(record.ar)
-            # else:
-            #     rs = record.ar
 
-            # log(record.rr, record.ar)
             for r in rs:
                 log(r.rdata, r.ttl)
                 if r.rtype == 1:
@@ -205,7 +186,6 @@ class Bjdns:
     def query_by_cn(self, req: DNSRequest):
         raw_data = query_by_udp(self.cn_dns, req.raw_data)
         record = dnslib.DNSRecord.parse(raw_data)
-        # ans = self.cn_resolver.query(req.domain_name)
         return DNSResponse(record=record)
 
     def query_by_oversea(self, req:DNSRequest):
@@ -225,7 +205,6 @@ class Bjdns:
             info(e)
             record = query_by_tcp('208.67.220.220', req.raw_data)
             resp = DNSResponse(record=record)
-            # self.cache.write(src_ip, req.question, None, resp.raw)
 
         self.cache.write(src_ip, req.question, resp)
         return resp
@@ -264,11 +243,7 @@ class Bjdns:
     def handle(self, data, cli_addr):
         req = DNSRequest(data, cli_addr)
 
-        # try:
         resp_data = self.query(req)
-        # except Exception as e:
-        #     info(e)
-        #     resp = b''
 
         self.server.sendto(resp_data, cli_addr)
 
