@@ -203,7 +203,8 @@ class Bjdns:
 
         except Exception as e:
             info(e)
-            record = query_by_tcp('208.67.220.220', req.raw_data)
+            raw_data = query_by_tcp('208.67.220.220', req.raw_data)
+            record = dnslib.DNSRecord.parse(raw_data)
             resp = DNSResponse(record=record)
 
         self.cache.write(src_ip, req.question, resp)
