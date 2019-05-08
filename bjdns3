@@ -72,10 +72,11 @@ def query_by_tcp(dns_ip, req_data):
 
 
 def query_by_udp(dns_ip, raw_data):
-    s = socket.socket(2, 2)
-    s.sendto(raw_data, (dns_ip, 53))
-    res = s.recv(512)
-    return res
+    with socket.socket(2, 2) as s:
+        s.settimeout(3)
+        s.sendto(raw_data, (dns_ip, 53))
+        res = s.recv(512)
+        return res
 
 
 def ip_from_resp(resp):
