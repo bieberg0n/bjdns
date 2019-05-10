@@ -56,11 +56,11 @@ class CnHostChecker:
             return False
 
 
-def query_by_tcp(dns_ip, req_data):
+def query_by_tcp(dns_ip, port, req_data):
     data = pack('>H', len(req_data)) + req_data
 
     s = socket.socket()
-    s.connect((dns_ip, 53))
+    s.connect((dns_ip, port))
     s.sendall(data)
     res = s.recv(2048)
 
@@ -189,7 +189,7 @@ class Bjdns:
         record = dnslib.DNSRecord.parse(raw_data)
         return DNSResponse(record=record)
 
-    def query_by_oversea(self, req:DNSRequest):
+    def query_by_oversea(self, req: DNSRequest):
         url = 'https://1.1.1.1/dns-query?ct=application/dns-json&name={}&type=1'.format(req.domain_name)
         src_ip = req.src[0]
         try:
@@ -204,7 +204,7 @@ class Bjdns:
 
         except Exception as e:
             info(e)
-            raw_data = query_by_tcp('208.67.220.220', req.raw_data)
+            raw_data = query_by_tcp('208.67.220.220', 443, req.raw_data)
             record = dnslib.DNSRecord.parse(raw_data)
             resp = DNSResponse(record=record)
 
