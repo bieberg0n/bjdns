@@ -1,9 +1,6 @@
-import pprint
 import time
-import json
 import struct
 import socket
-# import config
 
 
 def empty(*args):
@@ -11,18 +8,7 @@ def empty(*args):
 
 
 def info(*args):
-    # if len(args) == 1:
-    #     pprint.pprint(*args)
-    # else:
     print(time.strftime('%Y-%m-%d %H:%M:%S'), *args)
-
-
-# def dlog(*args):
-    # if config.debug:
-    #     if len(args) == 1:
-    #         pprint.pprint(*args)
-    #     else:
-    #         print(*args)
 
 
 def resp_from_json(json_str: dict):
@@ -57,3 +43,11 @@ def is_private_ip(ip):
         if ip1 == ag:
             return True
         return False
+
+
+def dict_deep_set(d: dict, data_list: list):
+    for data in data_list:
+        if d.get(data) is None:
+            d[data] = dict()
+
+        d = d[data]

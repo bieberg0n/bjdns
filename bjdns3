@@ -30,6 +30,7 @@ from gevent import (
 from gevent.server import DatagramServer
 from cache import Cache
 import ipincn
+import gfwlistcheck
 from utils import (
     empty,
     info,
@@ -71,9 +72,9 @@ def query_by_tcp(dns_ip, port, req_data):
         return res[2:]
 
 
-def query_by_udp(dns_ip, raw_data):
+def query_by_udp(dns_ip, raw_data, timeout=3.0):
     with socket.socket(2, 2) as s:
-        s.settimeout(3)
+        s.settimeout(timeout)
         s.sendto(raw_data, (dns_ip, 53))
         res = s.recv(512)
         return res
@@ -119,7 +120,6 @@ class DNSResponse:
             rs.extend(record.ar)
 
             for r in rs:
-                log(r.rdata, r.ttl)
                 if r.rtype == 1:
                     self.ip = str(r.rdata)
                     self.ttl = r.ttl
@@ -175,17 +175,37 @@ class Bjdns:
     def __init__(self, listen, direct_dns_serv):
         self.cache = Cache()
 
-        self.cn_dns = direct_dns_serv
+        if direct_dns_serv:
+            self.cn_dns = [direct_dns_serv]
+        else:
+            self.cn_dns = [
+                '119.29.29.29',
+                '114.114.114.114',
+            ]
 
+        info('direct dns server:', self.cn_dns)
         self.cn_checker = CnHostChecker()
         self.ip_in_cn = ipincn.ip_in_cn_gen()
+
+        self.gfw_list = gfwlistcheck.GfwList()
 
         ip, port_str = listen.split(':')
         self.server = DatagramServer((ip, int(port_str)), self.handle)
         self.session = requests.Session()
 
+    def multi_query_by_udp(self, raw_data):
+        if len(self.cn_dns) == 1:
+            return query_by_udp(self.cn_dns[0], raw_data)
+
+        else:
+            try:
+                return query_by_udp(self.cn_dns[0], raw_data, 0.5)
+            except Exception as e:
+                info(e)
+                return query_by_udp(self.cn_dns[1], raw_data)
+
     def query_by_cn(self, req: DNSRequest):
-        raw_data = query_by_udp(self.cn_dns, req.raw_data)
+        raw_data = self.multi_query_by_udp(req.raw_data)
         record = dnslib.DNSRecord.parse(raw_data)
         return DNSResponse(record=record)
 
@@ -213,14 +233,21 @@ class Bjdns:
 
     def _query(self, req: DNSRequest) -> DNSResponse:
         src_ip = req.src[0]
-        resp = self.query_by_cn(req)
-
-        if self.cn_checker.is_cn_host(req.domain_name) or self.ip_in_cn(resp.ip):
-            self.cache.write(src_ip, req.question, resp)
-            return resp
+        if self.gfw_list.check(req.domain_name):
+            log('host is in gfw list')
+            return self.query_by_oversea(req)
 
         else:
-            return self.query_by_oversea(req)
+            resp = self.query_by_cn(req)
+
+            if self.cn_checker.is_cn_host(req.domain_name) or self.ip_in_cn(resp.ip):
+                log('host is in cn')
+                self.cache.write(src_ip, req.question, resp)
+                return resp
+
+            else:
+                log('host is in oversea')
+                return self.query_by_oversea(req)
 
     def query(self, req: DNSRequest) -> bytes:
         src_ip, _ = req.src
@@ -250,6 +277,7 @@ class Bjdns:
         self.server.sendto(resp_data, cli_addr)
 
     def start(self):
+        info('bjdns3 start.')
         self.server.serve_forever()
 
 
@@ -265,13 +293,9 @@ if __name__ == '__main__':
     else:
         log = empty
 
-    if not direct_dns_serv:
-        direct_dns_serv = '223.5.5.5'
     if not listen:
         listen = '0.0.0.0:53'
 
-    info('bjdns3 start.')
-    info('direct dns server:', direct_dns_serv)
     info('listen:', listen)
     bjdns = Bjdns(listen, direct_dns_serv)
     bjdns.start()
