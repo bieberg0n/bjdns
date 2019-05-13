@@ -31,7 +31,7 @@ Examples:
 
 Options:
   -h --help             Show this screen
-  -d DIRECT_DNS_SERVER  dns server for Chinese host. default: 223.5.5.5
+  -d DIRECT_DNS_SERVER  dns server for Chinese host. default: 119.29.29.29, 114.114.114.114
   -l LISTEN_IP_PORT     listen ip and port. default: 0.0.0.0:53
   --debug               debug mode
 ```
