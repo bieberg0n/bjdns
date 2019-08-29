@@ -34,7 +34,6 @@ class Cache:
         except Exception:
             return None
         else:
-            # log((dns_type, name), value, self.cache.get(src_ip, {}))
             now = time.time()
             if response:
                 ttls = [answer['TTL'] for answer in value['response']['Answer']]
@@ -42,7 +41,6 @@ class Cache:
             else:
                 resp = value['data']
                 ttls = [value['ttl']]
-                # log(answer, now - value['mtime'], answer['TTL'])
 
             for ttl in ttls:
                 if now - value['mtime'] > ttl:

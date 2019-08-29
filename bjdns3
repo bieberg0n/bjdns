@@ -29,7 +29,7 @@ from gevent import (
 )
 from gevent.server import DatagramServer
 from cache import Cache
-import ipincn
+from ipincn import CnIpChecker
 import gfwlistcheck
 from utils import (
     empty,
@@ -97,6 +97,7 @@ def ip_from_resp(resp):
 class DNSRequest:
     def __init__(self, raw_data, src_addr):
         self.raw_data = raw_data
+        self.q_id = raw_data[:2]
         self.src = src_addr
 
         list_iter = iter(raw_data[13:])
@@ -126,7 +127,7 @@ class DNSResponse:
                     return
             else:
                 self.ip = ''
-                self.ttl = 0
+                self.ttl = 3600
 
         else:
             self.ip = ip
@@ -137,12 +138,10 @@ class DNSResponse:
 def make_data(data, ip, ttl):
     # data is request
     if ip:
-        (id, flags, quests,
-         answers, author, addition) = unpack('>HHHHHH', data[0:12])
+        q_id, flags, quests, answers, author, addition = unpack('>HHHHHH', data[0:12])
         flags_new = 33152
         answers_new = 1
-        res = pack('>HHHHHH', id, flags_new, quests,
-                   answers_new, author, addition)
+        res = pack('>HHHHHH', q_id, flags_new, quests, answers_new, author, addition)
 
         res += data[12:]
 
@@ -161,8 +160,7 @@ def make_data(data, ip, ttl):
                     dns_answer['datalength'])
 
         ip = ip.split('.')
-        ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]),
-                        int(ip[2]), int(ip[3]))
+        ip_bytes = pack('BBBB', int(ip[0]), int(ip[1]), int(ip[2]), int(ip[3]))
 
         res += ip_bytes
         return res
@@ -172,7 +170,7 @@ def make_data(data, ip, ttl):
 
 
 class Bjdns:
-    def __init__(self, listen, direct_dns_serv):
+    def __init__(self, listen_addr, direct_dns_serv):
         self.cache = Cache()
 
         if direct_dns_serv:
@@ -185,11 +183,11 @@ class Bjdns:
 
         info('direct dns server:', self.cn_dns)
         self.cn_checker = CnHostChecker()
-        self.ip_in_cn = ipincn.ip_in_cn_gen()
+        self.checker = CnIpChecker()
 
         self.gfw_list = gfwlistcheck.GfwList()
 
-        ip, port_str = listen.split(':')
+        ip, port_str = listen_addr.split(':')
         self.server = DatagramServer((ip, int(port_str)), self.handle)
         self.session = requests.Session()
 
@@ -240,7 +238,7 @@ class Bjdns:
         else:
             resp = self.query_by_cn(req)
 
-            if self.cn_checker.is_cn_host(req.domain_name) or self.ip_in_cn(resp.ip):
+            if self.cn_checker.is_cn_host(req.domain_name) or self.checker.check(resp.ip):
                 log('host is in cn')
                 self.cache.write(src_ip, req.question, resp)
                 return resp
@@ -256,7 +254,9 @@ class Bjdns:
         if cache_resp:
             resp = DNSResponse(record=dnslib.DNSRecord.parse(cache_resp))
             info(req.src, '[cache]', req.domain_name, resp.ip, '(ttl:{})'.format(resp.ttl))
-            return make_data(req.raw_data, resp.ip, resp.ttl)
+            # return make_data(req.raw_data, resp.ip, resp.ttl)
+            # info(req.q_id + cache_resp[2:])
+            return req.q_id + cache_resp[2:]
 
         elif req.type == 1:
             resp = self._query(req)
@@ -284,7 +284,7 @@ class Bjdns:
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    direct_dns_serv = args.get('-d')
+    dns_serv = args.get('-d')
     listen = args.get('-l')
     debug_mode = args.get('--debug')
 
@@ -297,5 +297,5 @@ if __name__ == '__main__':
         listen = '0.0.0.0:53'
 
     info('listen:', listen)
-    bjdns = Bjdns(listen, direct_dns_serv)
+    bjdns = Bjdns(listen, dns_serv)
     bjdns.start()
